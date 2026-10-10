@@ -287,6 +287,14 @@ pub fn sibling_binary(name: &str) -> Option<PathBuf> {
             }
         }
     }
+    if let Some(paths) = std::env::var_os("PATH") {
+        for dir in std::env::split_paths(&paths) {
+            let cand = dir.join(name);
+            if cand.is_file() {
+                return Some(cand);
+            }
+        }
+    }
     None
 }
 

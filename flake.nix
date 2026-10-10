@@ -101,6 +101,7 @@
             nativeBuildInputs = with pkgs; [
               pkg-config
               wrapGAppsHook4
+              makeWrapper
             ];
             buildInputs = with pkgs; [
               gtk4
@@ -119,6 +120,7 @@
                 mkdir -p $out/share/icons/hicolor/''${size}x''${size}/apps
                 ${pkgs.imagemagick}/bin/magick ${./data/icons/ruwa.png} -resize ''${size}x''${size} $out/share/icons/hicolor/''${size}x''${size}/apps/ruwa.png
               done
+              wrapProgram $out/bin/ruwa --set-default RUWA_ENGINE ${engine}/bin/ruwa-engine
             '';
           };
           engine = pkgs.buildFHSEnv {
