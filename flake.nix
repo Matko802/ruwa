@@ -35,6 +35,8 @@
             libsoup_3
             gtk3
             glib
+            glib-networking
+            gsettings-desktop-schemas
             cairo
             pango
             gdk-pixbuf
@@ -64,8 +66,14 @@
                 pkgs.lib.makeBinPath [
                   pkgs.nodejs
                   pkgs.xdg-utils
+                  pkgs.bubblewrap
+                  pkgs.xdg-dbus-proxy
                 ]
               } \
+              --set GIO_MODULE_DIR "${pkgs.glib-networking}/lib/gio/modules" \
+              --set GIO_EXTRA_MODULES "${pkgs.glib-networking}/lib/gio/modules" \
+              --set GSETTINGS_SCHEMA_DIR "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}/glib-2.0/schemas" \
+              --prefix XDG_DATA_DIRS : "${pkgs.gsettings-desktop-schemas}/share:${pkgs.gtk3}/share" \
               --unset WAYLAND_DISPLAY \
               --add-flags "$out/share/ruwa/app"
             install -Dm644 ${./data/ruwa.desktop} $out/share/applications/ruwa.desktop
