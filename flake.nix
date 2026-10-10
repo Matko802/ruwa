@@ -91,21 +91,129 @@
             platforms = nixpkgs.lib.platforms.linux;
           };
         };
+
+      # Ruwa-Neutron: Datcord 0.6.2 release tarball, rebranded to WhatsApp
+      # (homepage pref, link-rewrite regex, branding, icons, app/meta names),
+      # running inside an FHS env so the foreign Firefox bundle finds its libs.
+      neutron =
+        { pkgs }:
+        let
+          datcordSrc = pkgs.fetchurl {
+            url = "https://github.com/gamingdoom/datcord/releases/download/0.6.2/datcord-linux-x86_64.tar.bz2";
+            hash = "sha256-Hc+z09yBWjOOw5iq8Unr6dNV0ZupeMJA2LWMZmql1dg=";
+          };
+          tree = pkgs.stdenv.mkDerivation {
+            pname = "ruwa-neutron-tree";
+            version = "0.1.0";
+            src = datcordSrc;
+            dontConfigure = true;
+            dontBuild = true;
+            nativeBuildInputs = with pkgs; [
+              python3
+              imagemagick
+            ];
+            installPhase = ''
+              python3 ${./neutron/rebrand.py} \
+                --src datcord-linux-x86_64 \
+                --dst $out/share/ruwa-neutron \
+                --logo ${./data/icons/ruwa.png}
+              install -Dm755 ${./neutron/launch-ruwa.sh} $out/share/ruwa-neutron/launch-ruwa.sh
+            '';
+          };
+          fhsLibs = with pkgs; [
+            gtk3
+            dbus
+            dbus-glib
+            alsa-lib
+            libxkbcommon
+            cups
+            libdrm
+            mesa
+            libxtst
+            libxscrnsaver
+            nss
+            nspr
+            expat
+            libxkbfile
+            glib
+            pango
+            cairo
+            gdk-pixbuf
+            atk
+            at-spi2-atk
+            libX11
+            libxcb
+            libXext
+            libXi
+            libXfixes
+            libXrender
+            libXcursor
+            libXdamage
+            libXcomposite
+            libXrandr
+            fontconfig
+            freetype
+            libXau
+            libXdmcp
+            libbsd
+            libmd
+            libappindicator-gtk3
+            libdbusmenu
+            pciutils
+            systemd
+            libva
+            glib-networking
+            gsettings-desktop-schemas
+          ];
+          init = pkgs.writeShellScript "ruwa-neutron-init" ''
+            export GIO_MODULE_DIR=/usr/lib/gio/modules
+            export GIO_EXTRA_MODULES=/usr/lib/gio/modules
+            unset WAYLAND_DISPLAY
+            exec ${tree}/share/ruwa-neutron/launch-ruwa.sh "$@"
+          '';
+        in
+        pkgs.buildFHSEnv {
+          name = "ruwa-neutron";
+          targetPkgs = pkgs: fhsLibs;
+          runScript = "${init}";
+          extraInstallCommands = ''
+            mkdir -p $out/share/applications $out/share/icons/hicolor
+            cp ${./neutron/ruwa-neutron.desktop} $out/share/applications/ruwa-neutron.desktop
+            for size in 16 24 32 48 64 128 256 512; do
+              mkdir -p $out/share/icons/hicolor/''${size}x''${size}/apps
+              ${pkgs.imagemagick}/bin/magick ${./data/icons/ruwa.png} -resize ''${size}x''${size} $out/share/icons/hicolor/''${size}x''${size}/apps/ruwa-neutron.png
+            done
+          '';
+          meta = {
+            mainProgram = "ruwa-neutron";
+            description = "WhatsApp desktop client, Neutron/Firefox SSB build (from Datcord)";
+            license = nixpkgs.lib.licenses.gpl3Only;
+            platforms = [ "x86_64-linux" ];
+          };
+        };
     in
     {
       packages = forAllSystems (pkgs: {
         default = ruwa { inherit pkgs; };
         "ruwa" = ruwa { inherit pkgs; };
+      } // nixpkgs.lib.optionalAttrs (pkgs.stdenv.hostPlatform.system == "x86_64-linux") {
+        "neutron" = neutron { inherit pkgs; };
       });
 
       overlays.default = final: _prev: {
         "ruwa" = ruwa { pkgs = final; };
+        "ruwa-neutron" = neutron { pkgs = final; };
       };
 
       apps = nixpkgs.lib.genAttrs systems (system: {
         default = {
           type = "app";
           program = "${self.packages.${system}.default}/bin/ruwa";
+        };
+      } // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+        neutron = {
+          type = "app";
+          program = "${self.packages.${system}.neutron}/bin/ruwa-neutron";
         };
       });
 
