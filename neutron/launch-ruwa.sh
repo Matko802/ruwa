@@ -20,4 +20,4 @@ if ! flock -n 9; then
   exit 0
 fi
 
-exec "$APPDIR/ruwa-bin" --no-remote --profile "$PROFILE" "$@"
+exec "$APPDIR/ruwa-bin" --profile "$PROFILE" "$@"

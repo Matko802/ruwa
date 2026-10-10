@@ -87,6 +87,18 @@ def main():
     )
     patch_text("localization/en-US/branding/brand.ftl", "Datcord", "Ruwa")
 
+    with open(os.path.join(tmp, "defaults/preferences/firefox-branding.js"), "a") as f:
+        f.write(
+            """
+/* Ruwa: hardware-accelerated rendering + media */
+pref("gfx.webrender.all", true);
+pref("layers.acceleration.force-enabled", true);
+pref("media.ffmpeg.vaapi.enabled", true);
+pref("media.hardware-video-decoding.enabled", true);
+"""
+        )
+    print("appended Ruwa performance prefs")
+
     for rel, size in BRAND_PNGS.items():
         magick_resize(logo, os.path.join(tmp, rel), size)
 
@@ -114,6 +126,22 @@ def main():
     with open(ini, "w") as f:
         f.write(content)
     print("patched application.ini")
+
+    import json as _json
+
+    pol = os.path.join(dst, "distribution/policies.json")
+    with open(pol) as f:
+        policies = _json.load(f)
+    perms = policies.setdefault("policies", {}).setdefault("Permissions", {})
+    for kind in ("Camera", "Microphone", "Notifications"):
+        entry = perms.setdefault(kind, {})
+        allow = entry.setdefault("Allow", [])
+        if WA_HOME.rstrip("/") not in [u.rstrip("/") for u in allow]:
+            allow.append(WA_HOME.rstrip("/"))
+    with open(pol, "w") as f:
+        _json.dump(policies, f, indent=2)
+        f.write("\n")
+    print("patched distribution/policies.json")
     print("DONE:", dst)
 
 

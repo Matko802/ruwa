@@ -45,6 +45,8 @@
             dbus
             dbus-glib
             alsa-lib
+            libpulseaudio
+            pipewire
             libxkbcommon
             cups
             libdrm
@@ -91,19 +93,52 @@
             unset WAYLAND_DISPLAY
             exec ${tree}/share/ruwa/launch-ruwa.sh "$@"
           '';
+          supervisor = pkgs.rustPlatform.buildRustPackage {
+            pname = "ruwa-supervisor";
+            version = "0.1.0";
+            src = nixpkgs.lib.cleanSource ./.;
+            cargoLock.lockFile = ./Cargo.lock;
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+              wrapGAppsHook4
+            ];
+            buildInputs = with pkgs; [
+              gtk4
+              glib
+              pango
+              gdk-pixbuf
+              cairo
+              graphene
+              gsettings-desktop-schemas
+              adwaita-icon-theme
+            ];
+            postInstall = ''
+              mkdir -p $out/share/applications
+              cp ${./data/ruwa.desktop} $out/share/applications/ruwa.desktop
+              for size in 16 24 32 48 64 128 256 512; do
+                mkdir -p $out/share/icons/hicolor/''${size}x''${size}/apps
+                ${pkgs.imagemagick}/bin/magick ${./data/icons/ruwa.png} -resize ''${size}x''${size} $out/share/icons/hicolor/''${size}x''${size}/apps/ruwa.png
+              done
+            '';
+          };
+          engine = pkgs.buildFHSEnv {
+            name = "ruwa-engine";
+            targetPkgs = pkgs: fhsLibs;
+            runScript = "${init}";
+            # Host /run carries the PipeWire/PulseAudio sockets and the
+            # D-Bus session bus; without it there is no audio and no
+            # native web notifications. dieWithParent keeps Quit reliable:
+            # killing the wrapper always takes the engine down with it.
+            dieWithParent = true;
+            extraBwrapArgs = [ "--bind /run /run" ];
+          };
         in
-        pkgs.buildFHSEnv {
+        pkgs.symlinkJoin {
           name = "ruwa";
-          targetPkgs = pkgs: fhsLibs;
-          runScript = "${init}";
-          extraInstallCommands = ''
-            mkdir -p $out/share/applications
-            cp ${./data/ruwa.desktop} $out/share/applications/ruwa.desktop
-            for size in 16 24 32 48 64 128 256 512; do
-              mkdir -p $out/share/icons/hicolor/''${size}x''${size}/apps
-              ${pkgs.imagemagick}/bin/magick ${./data/icons/ruwa.png} -resize ''${size}x''${size} $out/share/icons/hicolor/''${size}x''${size}/apps/ruwa.png
-            done
-          '';
+          paths = [
+            supervisor
+            engine
+          ];
           meta = {
             mainProgram = "ruwa";
             description = "Lightweight WhatsApp desktop client for Linux (Neutron/Firefox SSB)";
@@ -135,9 +170,23 @@
             python3
             imagemagick
             nix
+            pkg-config
+            mold
+            gtk4
+            glib
+            pango
+            gdk-pixbuf
+            cairo
+            graphene
+            gsettings-desktop-schemas
+            adwaita-icon-theme
           ];
           shellHook = ''
-            echo "ruwa dev shell ready. Rebrand deps: python3 + magick."
+            export RUSTFLAGS="-C link-arg=-fuse-ld=mold"
+            export CARGO_INCREMENTAL=1
+            export PATH="$HOME/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin:$PATH"
+            export XDG_DATA_DIRS="$XDG_DATA_DIRS:${pkgs.gsettings-desktop-schemas}/share:${pkgs.gtk4}/share:${pkgs.adwaita-icon-theme}/share"
+            echo "ruwa dev shell ready. Run: cargo test"
           '';
         };
       });
