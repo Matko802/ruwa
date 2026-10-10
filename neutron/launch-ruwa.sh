@@ -11,13 +11,6 @@ else
 fi
 APPDIR="${RUWA_DIR:-$DEFAULT_DIR}"
 PROFILE="${RUWA_PROFILE:-${XDG_DATA_HOME:-$HOME/.local/share}/ruwa/profile}"
-LOCK="$PROFILE/.ruwa-lock"
 
 mkdir -p "$PROFILE"
-exec 9>"$LOCK"
-if ! flock -n 9; then
-  echo "ruwa is already running" >&2
-  exit 0
-fi
-
 exec "$APPDIR/ruwa-bin" --profile "$PROFILE" "$@"
