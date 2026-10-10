@@ -13,10 +13,9 @@ use std::thread;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-// Heartbeat interval for the event loop. We avoid ControlFlow::Poll (which
-// busy-spins at 100% CPU when idle) and instead wake the loop on a fixed
-// cadence to drain IPC channels, while still responding immediately to real
-// window events.
+// Heartbeat interval for the event loop. The loop runs in Poll mode with an
+// explicit sleep here (instead of WaitUntil, which never fires on some
+// Linux/X11 setups and would silently drop all JS->native messages).
 const POLL_INTERVAL: Duration = Duration::from_millis(16);
 use tao::event::{Event, StartCause, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
@@ -592,7 +591,11 @@ require('{}');
     }
 
     event_loop.run(move |event, event_loop_target, control_flow| {
-        *control_flow = ControlFlow::WaitUntil(Instant::now() + POLL_INTERVAL);
+        // NOTE: ControlFlow::Poll + explicit sleep. WaitUntil never wakes the
+        // loop on some Linux/X11 setups, which silently drops all JS->native
+        // messages (no windows are ever created). The sleep keeps idle CPU low.
+        *control_flow = ControlFlow::Poll;
+        std::thread::sleep(POLL_INTERVAL);
         let mut st = state.borrow_mut();
 
         if st.node_exited.load(Ordering::SeqCst) {
@@ -603,8 +606,7 @@ require('{}');
         }
 
         match event {
-            Event::NewEvents(StartCause::Poll | StartCause::ResumeTimeReached { .. }) => {
-                // Drain async responses from background threads (dialogs, clipboard, etc.)
+            Event::NewEvents(_) => {
                 while let Ok((request_id, result)) = response_rx.try_recv() {
                     st.send_to_node(&ToNode::Response {
                         request_id,

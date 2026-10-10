@@ -111,6 +111,9 @@ impl InnerWebView {
   ) -> Result<Self> {
     let parent = match window.window_handle()?.as_raw() {
       RawWindowHandle::Xlib(w) => w.window,
+      // XCB and Xlib share the same X11 XID namespace, so an XCB window id
+      // (what tao/x11rb hands out) can be used directly as the parent.
+      RawWindowHandle::Xcb(w) => w.window.get() as c_ulong,
       _ => return Err(Error::UnsupportedWindowHandle),
     };
 

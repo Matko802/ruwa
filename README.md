@@ -1,150 +1,50 @@
-<div align="center">
-  <img src="logo.png" alt="Gelectron" width="180">
-  <h1>Gelectron</h1>
-  <p>A drop-in replacement for Electron using native web views (WKWebView / WebView2 / WebKitGTK) instead of Chromium</p>
-</div>
+# Ruwa
 
-Gelectron is an Electron alternative focused on using platform-native web views through [`wry`](https://github.com/tauri-apps/wry) and `tao`, plus a Node-compatible API shim.
+Lightweight WhatsApp desktop client for Linux, built on
+[Gelectron](https://github.com/mileswolfallen2/gelectron) — an
+Electron-compatible runtime using native web views (WebKitGTK on Linux,
+no bundled Chromium). See `ATTRIBUTION.md`.
 
-## Project status
+`app/` holds the WhatsApp client (`package.json` + `main.js`): a single
+window pointed at https://web.whatsapp.com/ with login persistence,
+external links opened in the default browser (`shell.openExternal`),
+unread-count tracking from the page title, and native notifications for
+new messages. Everything else in this repo is the Gelectron runtime.
 
-- Early-stage project under active development
-- Compatibility is partial and evolving
-- Some Electron APIs are implemented, others are stubs or no-ops
+## Run from source
 
-If you are evaluating migration from Electron, test your app against Gelectron directly before committing to it.
-
-## Install
-
-The npm package exposes:
-
-- `gelectron`
-- `gelectron-core`
-- `gelectron-packager`
-
-```bash
-npm install -g gelectron-core
+```sh
+nix develop            # system WebKitGTK, mold linker, node
+cargo build -p gelectron
+node cli/gelectron.js app/
 ```
 
-## Quick start
+Without Nix you need Rust stable, Node 18+, `webkit2gtk-4.1`,
+`libsoup-3`, GTK3 dev files, `pkg-config`, and `xdg-utils`, then the
+same three commands.
 
-Run an app directory (uses `package.json` -> `main`):
+## Install (Nix)
 
-```bash
-gelectron /path/to/electron-app
-gelectron .
+```sh
+nix build .#ruwa
+./result/bin/ruwa
 ```
 
-Run a main-process script directly:
+`ruwa` also ships a `ruwa.desktop` entry and icons. On first launch,
+scan the QR code with your phone; the session persists in
+`~/.local/share/ruwa/`.
 
-```bash
-gelectron main.js
-```
+## Notes
 
-Show CLI version/help:
-
-```bash
-gelectron --version
-gelectron --help
-```
-
-If the native runtime binary is unavailable, the CLI falls back to the Node.js compatibility runtime (`src/electron/runtime.js`), which is API-only and does not provide a native desktop window.
-
-## Build from source
-
-### Prerequisites
-
-- Rust (stable)
-- Node.js 18+
-- npm
-
-### Build and run
-
-```bash
-git clone https://github.com/mileswolfallen2/gelectron.git
-cd gelectron
-npm install
-
-# Build native runtime binary
-cargo build --release -p gelectron
-
-# Run demo app
-cargo run --release -p gelectron -- demo/
-```
-
-## Architecture (high level)
-
-Gelectron is composed of:
-
-1. **Rust runtime (`crates/gelectron-app`)**
-   - Native app process
-   - Window/event loop via `tao`
-   - Native web view via `wry`
-
-2. **JS compatibility layer (`src/electron/`)**
-   - `require('electron')`-style API surface
-   - Main-process and renderer shims
-   - IPC bridge to the native runtime
-
-3. **CLI launcher (`cli/gelectron.js`)**
-   - Resolves app entry point
-   - Locates and launches the native runtime when present
-   - Falls back to JS runtime when native binary is not found
-
-## API compatibility
-
-Gelectron exposes Electron-like modules from `src/electron/index.js`, including:
-
-- `app`
-- `BrowserWindow`
-- `ipcMain`
-- `Menu` / `MenuItem`
-- `Tray`
-- `dialog`
-- `shell`
-- `Notification`
-- `nativeImage`
-- `safeStorage`
-- `contextBridge`
-- `webContents`
-- `autoUpdater`
-- `clipboard`
-- `screen`
-- `nativeTheme`
-- `session` (stubbed behavior)
-- plus additional stubs such as `systemPreferences`, `powerMonitor`, and `globalShortcut`
-
-Because behavior is still maturing, treat compatibility as best-effort rather than complete parity.
-
-## Packaging
-
-`gelectron-packager` is included as a CLI tool:
-
-```bash
-gelectron-packager --dir ./demo --name MyApp
-```
-
-You can also specify target platform/arch:
-
-```bash
-gelectron-packager --dir ./my-app --name MyApp --platform darwin --arch arm64
-gelectron-packager --dir ./my-app --name MyApp --platform win32 --arch x64
-gelectron-packager --dir ./my-app --name MyApp --platform linux --arch x64
-```
-
-## Repository layout
-
-```text
-gelectron/
-├── cli/                      # CLI entrypoint
-├── src/electron/             # Electron compatibility layer
-├── crates/gelectron-app/     # Rust native runtime binary
-├── crates/gelectron-core/    # Rust native core (N-API related)
-├── packager/                 # gelectron-packager
-├── demo/                     # Example app
-└── npm/                      # Platform npm package assets
-```
-
-## Contributing
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- X11/XWayland is used even on Wayland desktops: the bundled `wry`
+  fork only supports Xlib/XCB parent windows (see `ATTRIBUTION.md`).
+  The wrapper unsets `WAYLAND_DISPLAY` for reliability.
+- Tray icon: Gelectron's `Tray` is currently a stub, so Ruwa has no
+  tray icon yet and closing the window quits the app.
+- Downloads from chats use the WebKitGTK default handling; inline
+  media (images, voice notes, video) works.
+- Voice/video calls need mic/camera permission plus
+  xdg-desktop-portal + PipeWire on Wayland.
+- `RUWA_URL` overrides the start URL (handy for testing),
+  `RUWA_TEST_LOG` makes the app log `unread:` / `open-external:` /
+  `report:` events to a file instead of acting on them.
