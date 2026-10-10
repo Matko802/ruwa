@@ -1,52 +1,38 @@
 # Ruwa
 
-Lightweight WhatsApp desktop client for Linux, built on
-[Gelectron](https://github.com/mileswolfallen2/gelectron) — an
-Electron-compatible runtime using native web views (WebKitGTK on Linux,
-no bundled Chromium). See `ATTRIBUTION.md`.
+Lightweight WhatsApp desktop client for Linux: a site-specific Firefox
+bundle (Neutron) pointed at https://web.whatsapp.com/ — no bundled
+Chromium, no Firefox source compilation. See `ATTRIBUTION.md`.
 
-`app/` holds the WhatsApp client (`package.json` + `main.js`): a single
-window pointed at https://web.whatsapp.com/ with login persistence,
-external links opened in the default browser (`shell.openExternal`),
-unread-count tracking from the page title, and native notifications for
-new messages. Everything else in this repo is the Gelectron runtime.
-
-## Run from source
-
-```sh
-nix develop            # system WebKitGTK, mold linker, node
-cargo build -p gelectron
-node cli/gelectron.js app/
-```
-
-Without Nix you need Rust stable, Node 18+, `webkit2gtk-4.1`,
-`libsoup-3`, GTK3 dev files, `pkg-config`, and `xdg-utils`, then the
-same three commands.
+The build starts from the official Datcord 0.6.2 Linux release and
+rebrands it (`neutron/rebrand.py`): WhatsApp homepage pref, external
+links opened in the default browser, Ruwa branding/icons, own profile.
+`neutron/launch-ruwa.sh` wraps the engine with single-instance locking
+(no tray host required, unlike Datcord's C++ launcher).
 
 ## Install (Nix)
 
 ```sh
-nix build .#ruwa        # Gelectron build (default)
+nix build .#ruwa
 ./result/bin/ruwa
-nix build .#neutron     # Neutron/Firefox build (from Datcord release)
-./result/bin/ruwa-neutron
 ```
 
-`ruwa` also ships a `ruwa.desktop` entry and icons. On first launch,
-scan the QR code with your phone; the session persists in
-`~/.local/share/ruwa/`.
+Ships a `ruwa.desktop` entry and icons. On first launch, scan the QR
+code with your phone (or link with your phone number); the session
+persists in `~/.local/share/ruwa/profile/`.
+
+`RUWA_PROFILE` overrides the profile dir, `RUWA_DIR` overrides the
+engine tree location. Any extra arguments (e.g. a URL) are passed to
+the engine.
 
 ## Notes
 
-- X11/XWayland is used even on Wayland desktops: the bundled `wry`
-  fork only supports Xlib/XCB parent windows (see `ATTRIBUTION.md`).
-  The wrapper unsets `WAYLAND_DISPLAY` for reliability.
-- Tray icon: Gelectron's `Tray` is currently a stub, so Ruwa has no
-  tray icon yet and closing the window quits the app.
-- Downloads from chats use the WebKitGTK default handling; inline
-  media (images, voice notes, video) works.
+- X11/XWayland is used even on Wayland desktops (the wrapper unsets
+  `WAYLAND_DISPLAY`); the engine runs in an FHS env with system
+  Firefox-runtime libs.
+- External links (videos, docs) open in your default browser via the
+  bundled `open-in-default-browser` helper; only WhatsApp hosts stay
+  in-app.
 - Voice/video calls need mic/camera permission plus
   xdg-desktop-portal + PipeWire on Wayland.
-- `RUWA_URL` overrides the start URL (handy for testing),
-  `RUWA_TEST_LOG` makes the app log `unread:` / `open-external:` /
-  `report:` events to a file instead of acting on them.
+- Closing the window quits the app (no tray icon in this build).

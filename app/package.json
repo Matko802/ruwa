@@ -1,8 +1,0 @@
-{
-  "name": "ruwa",
-  "version": "0.1.0",
-  "description": "Lightweight WhatsApp desktop client (Gelectron)",
-  "main": "main.js",
-  "author": "rused",
-  "license": "MIT"
-}

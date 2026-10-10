@@ -2,7 +2,7 @@
 Type=Application
 Name=Ruwa
 GenericName=WhatsApp Client
-Comment=Lightweight WhatsApp desktop client (Gelectron)
+Comment=Lightweight WhatsApp desktop client (Firefox engine)
 Exec=ruwa
 Icon=ruwa
 Terminal=false

@@ -1,42 +1,4 @@
-# Rust
-/target/
-crates/*/target/
-
-# Node.js
-node_modules/
-npm-debug.log*
-package-lock.json
-
-al/
-# Build artifacts
-*.node
-*.dylib
-*.so
-*.dll
-*.d
-*.pdb
-
-# Benchmark results
-benchmark/result-*.json
-
-# Packaged output
-dist/
-
-# Packager cache
-.gelectron-cache/
-
-# npm platform package stubs
-npm/darwin-arm64/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# napi-rs
-napi-dist/
+/target
+/result*
+/omni-work
+__pycache__/
