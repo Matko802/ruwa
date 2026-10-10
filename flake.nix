@@ -61,6 +61,7 @@
             mkdir -p $out/share/ruwa
             cp -r ${./src/electron} $out/share/ruwa/compat
             cp -r ${./app} $out/share/ruwa/app
+            ln -s ../share/ruwa/compat $out/bin/compat
             makeWrapper $out/bin/.ruwa-unwrapped $out/bin/ruwa \
               --prefix PATH : ${
                 pkgs.lib.makeBinPath [
