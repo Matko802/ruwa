@@ -113,8 +113,11 @@
               imagemagick
             ];
             installPhase = ''
+              ls -la
+              srcdir=$(ls -d datcord-*/ | head -1)
+              echo "rebranding $srcdir"
               python3 ${./neutron/rebrand.py} \
-                --src datcord-linux-x86_64 \
+                --src "$srcdir" \
                 --dst $out/share/ruwa-neutron \
                 --logo ${./data/icons/ruwa.png}
               install -Dm755 ${./neutron/launch-ruwa.sh} $out/share/ruwa-neutron/launch-ruwa.sh
