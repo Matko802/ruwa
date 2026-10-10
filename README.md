@@ -26,8 +26,10 @@ same three commands.
 ## Install (Nix)
 
 ```sh
-nix build .#ruwa
+nix build .#ruwa        # Gelectron build (default)
 ./result/bin/ruwa
+nix build .#neutron     # Neutron/Firefox build (from Datcord release)
+./result/bin/ruwa-neutron
 ```
 
 `ruwa` also ships a `ruwa.desktop` entry and icons. On first launch,
