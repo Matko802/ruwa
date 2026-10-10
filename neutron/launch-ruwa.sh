@@ -4,7 +4,13 @@
 # refuses to start without a StatusNotifier tray host.
 set -eu
 
-APPDIR="${RUWA_NEUTRON_DIR:-$(dirname "$(readlink -f "$0")")/../share/ruwa-neutron}"
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+if [ -x "$SCRIPT_DIR/ruwa-bin" ]; then
+  DEFAULT_DIR="$SCRIPT_DIR"
+else
+  DEFAULT_DIR="$SCRIPT_DIR/../share/ruwa-neutron"
+fi
+APPDIR="${RUWA_NEUTRON_DIR:-$DEFAULT_DIR}"
 PROFILE="${RUWA_PROFILE:-${XDG_DATA_HOME:-$HOME/.local/share}/ruwa-neutron/profile}"
 LOCK="$PROFILE/.ruwa-lock"
 
