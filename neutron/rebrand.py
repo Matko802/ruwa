@@ -106,6 +106,10 @@ pref("media.hardware-video-decoding.enabled", true);
     addon_dir = os.path.join(tmp, "chrome/browser/builtin-addons/ruwa-topbar")
     shutil.copytree(topbar, addon_dir)
     os.chmod(addon_dir, 0o755)
+    epoch = int(os.environ.get("SOURCE_DATE_EPOCH", "1700000000"))
+    for root, _, files in os.walk(addon_dir):
+        for fn in files:
+            os.utime(os.path.join(root, fn), (epoch, epoch))
     for size in (16, 32, 48):
         magick_resize(logo, os.path.join(addon_dir, f"icon{size}.png"), size)
     import json as _addons_json
