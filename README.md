@@ -4,16 +4,16 @@ Lightweight WhatsApp desktop client for Linux: a site-specific Firefox
 bundle (Neutron) pointed at https://web.whatsapp.com/ — no bundled
 Chromium, no Firefox source compilation. See `ATTRIBUTION.md`.
 
-The build starts from the official Datcord 0.6.2 Linux release and
-rebrands it (`neutron/rebrand.py`): WhatsApp homepage pref, permission
-pre-grants (notifications, mic, camera), external links opened in the
-default browser, GPU/WebRender/VA-API prefs, Ruwa branding/icons, own
-profile. `neutron/launch-ruwa.sh` runs the engine; the `ruwa` supervisor
-(`src/`, Rust) adds single-instance locking, a StatusNotifier tray icon
-(Show / Settings / Quit, when a tray host exists), and falls back to
-direct engine launch otherwise. `ruwa-settings` is a GTK settings app
-with a header bar: GPU acceleration, VA-API decoding, audio backend,
-download folder, autostart, log-out (clears site data), and launch.
+The window is chromeless — just the page. Control it through the
+tray menu (Show / Settings / Quit), `Ctrl+R` to reload, `F11` for
+fullscreen.
+
+Site styling comes from `userContent.css`, rebuilt on every launch from
+the Ruwa base plus your own mods: drop a folder with a `mod.css` file
+into `~/.config/ruwa/mods/<name>/` to restyle WhatsApp itself (thin
+scrollbars ship as the base example). The window chrome file
+(`chrome/userChrome.css`) is managed by Ruwa; your rules belong in
+mods, which are never overwritten.
 
 ## Install (Nix)
 
