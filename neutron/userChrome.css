@@ -1,4 +1,6 @@
-/* Ruwa SSB chrome: single page app, no tab strip, slim navigation bar. */
+/* Ruwa SSB chrome: single page app, no tab strip, custom slim bar.
+   The URL bar is hidden on purpose (site-specific browser); navigation
+   stays inside WhatsApp, external links open in the default browser. */
 
 #navigator-toolbox {
   display: flex !important;
@@ -13,4 +15,10 @@
   visibility: visible !important;
   box-shadow: none !important;
   border-top: none !important;
+  padding: 2px 6px !important;
+}
+
+#urlbar-container,
+#search-container {
+  display: none !important;
 }
