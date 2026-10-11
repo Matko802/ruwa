@@ -133,6 +133,42 @@ fn build_ui(app: &gtk::Application) {
 
     {
         let status = status.clone();
+        let view = gtk::TextView::new();
+        view.set_monospace(true);
+        view.set_wrap_mode(gtk::WrapMode::None);
+        view.set_hexpand(true);
+        view.set_vexpand(true);
+        let existing = settings::read_custom_css();
+        if existing.trim().is_empty() {
+            view.buffer().set_text(settings::CUSTOM_CSS_SEED);
+        } else {
+            view.buffer().set_text(&existing);
+        }
+        let scroll = gtk::ScrolledWindow::new();
+        scroll.set_min_content_height(220);
+        scroll.set_hexpand(true);
+        scroll.set_child(Some(&view));
+        let save = gtk::Button::with_label("Save custom CSS");
+        save.connect_clicked(move |_| {
+            let buf = view.buffer();
+            let text = buf
+                .text(&buf.start_iter(), &buf.end_iter(), false)
+                .to_string();
+            match settings::write_custom_css(&text) {
+                Ok(()) => status.set_text("Custom CSS saved. Takes effect on next launch."),
+                Err(e) => status.set_text(&format!("Custom CSS save failed: {e}")),
+            }
+        });
+        body.append(&section_label("Appearance"));
+        let hint = gtk::Label::new(Some("Custom CSS (~/.config/ruwa/custom.css), applied after mods."));
+        hint.set_xalign(0.0);
+        body.append(&hint);
+        body.append(&scroll);
+        body.append(&save);
+    }
+
+    {
+        let status = status.clone();
         let autostart = gtk::Switch::new();
         autostart.set_active(settings::is_autostart());
         autostart.set_halign(gtk::Align::End);

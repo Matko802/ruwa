@@ -12,6 +12,7 @@ fi
 APPDIR="${RUWA_DIR:-$DEFAULT_DIR}"
 PROFILE="${RUWA_PROFILE:-${XDG_DATA_HOME:-$HOME/.local/share}/ruwa/profile}"
 MODS="${XDG_CONFIG_HOME:-$HOME/.config}/ruwa/mods"
+CUSTOM_CSS="${XDG_CONFIG_HOME:-$HOME/.config}/ruwa/custom.css"
 
 mkdir -p "$PROFILE/chrome"
 
@@ -27,6 +28,9 @@ install -m644 "$APPDIR/chrome-dist/userChrome.css" "$PROFILE/chrome/userChrome.c
     printf '\n/* mod: %s */\n' "$mod"
     cat "$mod"
   done
+  if [ -f "$CUSTOM_CSS" ]; then
+    cat "$CUSTOM_CSS"
+  fi
 } > "$PROFILE/chrome/userContent.css.tmp"
 mv "$PROFILE/chrome/userContent.css.tmp" "$PROFILE/chrome/userContent.css"
 

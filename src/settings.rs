@@ -59,6 +59,33 @@ pub fn home_dir() -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from("/tmp"))
 }
 
+pub fn config_dir() -> PathBuf {
+    if let Ok(p) = std::env::var("XDG_CONFIG_HOME") {
+        if !p.trim().is_empty() {
+            return PathBuf::from(p).join("ruwa");
+        }
+    }
+    home_dir().join(".config").join("ruwa")
+}
+
+pub fn custom_css_path() -> PathBuf {
+    config_dir().join("custom.css")
+}
+
+pub const CUSTOM_CSS_SEED: &str = "/* Ruwa custom CSS: applied to WhatsApp Web on every launch.\n   Reload the page to apply edits. */\n\n@-moz-document domain(web.whatsapp.com), domain(whatsapp.com), domain(whatsapp.net) {\n}\n";
+
+pub fn read_custom_css() -> String {
+    std::fs::read_to_string(custom_css_path()).unwrap_or_default()
+}
+
+pub fn write_custom_css(css: &str) -> io::Result<()> {
+    let path = custom_css_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(path, css)
+}
+
 pub fn profile_dir() -> PathBuf {
     if let Ok(p) = std::env::var("RUWA_PROFILE") {
         if !p.trim().is_empty() {
@@ -206,6 +233,26 @@ pub fn write_prefs(profile: &Path, prefs: &Prefs) -> io::Result<()> {
     );
     set_pref_line(&mut lines, "browser.download.folderList", "2");
     set_pref_line(&mut lines, "browser.download.useDownloadDir", "true");
+    set_pref_line(
+        &mut lines,
+        "browser.download.always_ask_before_handling_new_types",
+        "false",
+    );
+    set_pref_line(
+        &mut lines,
+        "browser.download.start_downloads_in_tmp_dir",
+        "false",
+    );
+    set_pref_line(
+        &mut lines,
+        "browser.download.allow_save_from_sandboxed_iframes",
+        "true",
+    );
+    set_pref_line(
+        &mut lines,
+        "browser.download.open_pdf_attachments_inline",
+        "false",
+    );
     let mut out = lines.join("\n");
     out.push('\n');
     std::fs::write(path, out)
@@ -349,6 +396,30 @@ mod tests {
         let p = read_prefs(&dir);
         assert_eq!(p, Prefs::default());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn download_prefs_save_automatically() {
+        let dir = tmp_profile("dlfix");
+        write_prefs(&dir, &Prefs::default()).unwrap();
+        let content = std::fs::read_to_string(user_js_path(&dir)).unwrap();
+        assert!(content.contains("browser.download.folderList\", 2);"));
+        assert!(content.contains("browser.download.useDownloadDir\", true);"));
+        assert!(content.contains("always_ask_before_handling_new_types\", false);"));
+        assert!(content.contains("start_downloads_in_tmp_dir\", false);"));
+        assert!(content.contains("allow_save_from_sandboxed_iframes\", true);"));
+        assert!(content.contains("open_pdf_attachments_inline\", false);"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn custom_css_seed_and_path() {
+        assert!(!CUSTOM_CSS_SEED.trim().is_empty());
+        assert!(CUSTOM_CSS_SEED.contains("@-moz-document"));
+        assert_eq!(
+            custom_css_path().file_name().and_then(|s| s.to_str()),
+            Some("custom.css")
+        );
     }
 
     #[test]

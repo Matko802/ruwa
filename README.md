@@ -11,9 +11,11 @@ fullscreen.
 Site styling comes from `userContent.css`, rebuilt on every launch from
 the Ruwa base plus your own mods: drop a folder with a `mod.css` file
 into `~/.config/ruwa/mods/<name>/` to restyle WhatsApp itself (thin
-scrollbars ship as the base example). The window chrome file
-(`chrome/userChrome.css`) is managed by Ruwa; your rules belong in
-mods, which are never overwritten.
+scrollbars ship as the base example). For one-off tweaks, Settings has
+a Custom CSS editor writing `~/.config/ruwa/custom.css`, applied after
+mods. The window chrome file (`chrome/userChrome.css`) is managed by
+Ruwa; your rules belong in mods or custom CSS, which are never
+overwritten.
 
 ## Install (Nix)
 
@@ -42,6 +44,9 @@ Firefox remoting.
 - External links (videos, docs) open in your default browser via the
   bundled `open-in-default-browser` helper; only WhatsApp hosts stay
   in-app.
+- Downloads auto-save to the Settings download folder (`~/Downloads` by
+  default) without prompting, including sandboxed blob saves; PDFs save
+  as files instead of opening inline.
 - Voice/video calls need mic/camera permission (pre-granted for
   WhatsApp) plus xdg-desktop-portal + PipeWire on Wayland.
 - The tray icon needs a StatusNotifier host (KDE natively, GNOME via
