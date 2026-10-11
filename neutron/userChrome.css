@@ -1,0 +1,16 @@
+/* Ruwa SSB chrome: single page app, no tab strip, slim navigation bar. */
+
+#navigator-toolbox {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#TabsToolbar {
+  visibility: collapse !important;
+}
+
+#nav-bar {
+  visibility: visible !important;
+  box-shadow: none !important;
+  border-top: none !important;
+}

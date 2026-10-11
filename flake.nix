@@ -38,6 +38,7 @@
                 --dst $out/share/ruwa \
                 --logo ${./data/icons/ruwa.png}
               install -Dm755 ${./neutron/launch-ruwa.sh} $out/share/ruwa/launch-ruwa.sh
+              install -Dm644 ${./neutron/userChrome.css} $out/share/ruwa/chrome-dist/userChrome.css
             '';
           };
           fhsLibs = with pkgs; [
