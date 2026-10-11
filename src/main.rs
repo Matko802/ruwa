@@ -133,10 +133,15 @@ impl Tray for RuwaTray {
     }
 
     fn icon_pixmap(&self) -> Vec<Icon> {
-        vec![
-            paint_icon_with_attention(false),
-            paint_icon_with_attention(true),
-        ]
+        vec![paint_icon_with_attention(false)]
+    }
+
+    fn attention_icon_name(&self) -> String {
+        String::from("ruwa")
+    }
+
+    fn attention_icon_pixmap(&self) -> Vec<Icon> {
+        vec![paint_icon_with_attention(true)]
     }
 
     fn tool_tip(&self) -> ToolTip {
