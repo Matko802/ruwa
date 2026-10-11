@@ -14,21 +14,40 @@ PROFILE="${RUWA_PROFILE:-${XDG_DATA_HOME:-$HOME/.local/share}/ruwa/profile}"
 MODS="${XDG_CONFIG_HOME:-$HOME/.config}/ruwa/mods"
 CUSTOM_CSS="${XDG_CONFIG_HOME:-$HOME/.config}/ruwa/custom.css"
 
+case "${RUWA_BACKEND:-auto}" in
+  x11|X11|xwayland)
+    unset WAYLAND_DISPLAY
+    ;;
+  wayland|Wayland)
+    ;;
+  *)
+    if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+      unset WAYLAND_DISPLAY
+    fi
+    ;;
+esac
+
 mkdir -p "$PROFILE/chrome"
 
-# Window chrome is managed by Ruwa: content-only window, control the app
-# through the tray menu, Ctrl+R and F11.
+if [ -f "$PROFILE/user.js" ] && [ ! -f "$PROFILE/user.js.ruwa-backup" ]; then
+  cp -p "$PROFILE/user.js" "$PROFILE/user.js.ruwa-backup"
+fi
+
 install -m644 "$APPDIR/chrome-dist/userChrome.css" "$PROFILE/chrome/userChrome.css"
 
-# Site style is rebuilt on every launch: Ruwa base plus the user's mods.
 {
   cat "$APPDIR/chrome-dist/userContent-base.css"
   for mod in "$MODS"/*/mod.css; do
     [ -f "$mod" ] || continue
+    moddir="$(dirname "$mod")"
+    if [ -f "$moddir/disabled" ]; then
+      continue
+    fi
     printf '\n/* mod: %s */\n' "$mod"
     cat "$mod"
   done
   if [ -f "$CUSTOM_CSS" ]; then
+    printf '\n/* custom.css */\n'
     cat "$CUSTOM_CSS"
   fi
 } > "$PROFILE/chrome/userContent.css.tmp"

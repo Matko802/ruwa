@@ -22,7 +22,7 @@
           };
           tree = pkgs.stdenv.mkDerivation {
             pname = "ruwa-tree";
-            version = "0.1.0";
+            version = "0.2.0";
             src = datcordSrc;
             dontConfigure = true;
             dontBuild = true;
@@ -93,12 +93,15 @@
           init = pkgs.writeShellScript "ruwa-init" ''
             export GIO_MODULE_DIR=/usr/lib/gio/modules
             export GIO_EXTRA_MODULES=/usr/lib/gio/modules
-            unset WAYLAND_DISPLAY
+            case "''${RUWA_BACKEND:-auto}" in
+              x11|X11|xwayland) unset WAYLAND_DISPLAY ;;
+              *) ;;
+            esac
             exec ${tree}/share/ruwa/launch-ruwa.sh "$@"
           '';
           supervisor = pkgs.rustPlatform.buildRustPackage {
             pname = "ruwa-supervisor";
-            version = "0.1.0";
+            version = "0.2.0";
             src = nixpkgs.lib.cleanSource ./.;
             cargoLock.lockFile = ./Cargo.lock;
             nativeBuildInputs = with pkgs; [

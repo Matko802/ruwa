@@ -83,7 +83,7 @@ def main():
     patch_text(
         "chrome/browser/builtin-addons/open-in-default-browser/replaceLinks.js",
         "http[s]?://discord.com",
-        r"http[s]?://.*\.whatsapp\.(com|net)",
+        r"http[s]?://([a-z0-9-]+\.)*(whatsapp\.com|whatsapp\.net|wa\.me)",
     )
     patch_text("localization/en-US/branding/brand.ftl", "Datcord", "Ruwa")
 
@@ -133,11 +133,20 @@ pref("media.hardware-video-decoding.enabled", true);
     with open(pol) as f:
         policies = _json.load(f)
     perms = policies.setdefault("policies", {}).setdefault("Permissions", {})
+    allowed_origins = [
+        WA_HOME.rstrip("/"),
+        "https://web.whatsapp.com",
+        "https://whatsapp.com",
+        "https://wa.me",
+    ]
     for kind in ("Camera", "Microphone", "Notifications"):
         entry = perms.setdefault(kind, {})
         allow = entry.setdefault("Allow", [])
-        if WA_HOME.rstrip("/") not in [u.rstrip("/") for u in allow]:
-            allow.append(WA_HOME.rstrip("/"))
+        existing = [u.rstrip("/") for u in allow]
+        for origin in allowed_origins:
+            if origin.rstrip("/") not in existing:
+                allow.append(origin)
+                existing.append(origin.rstrip("/"))
     with open(pol, "w") as f:
         _json.dump(policies, f, indent=2)
         f.write("\n")
