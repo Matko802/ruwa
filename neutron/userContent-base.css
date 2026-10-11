@@ -1,0 +1,14 @@
+/* Ruwa base site style for WhatsApp Web.
+   This header is managed by Ruwa; rules from
+   ~/.config/ruwa/mods/<name>/mod.css are appended below it on launch. */
+
+@-moz-document domain(web.whatsapp.com), domain(whatsapp.com) {
+  #app {
+    text-rendering: optimizeLegibility;
+  }
+
+  * {
+    scrollbar-width: thin !important;
+    scrollbar-color: #8696a0 transparent !important;
+  }
+}

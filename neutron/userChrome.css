@@ -1,24 +1,9 @@
-/* Ruwa SSB chrome: single page app, no tab strip, custom slim bar.
-   The URL bar is hidden on purpose (site-specific browser); navigation
-   stays inside WhatsApp, external links open in the default browser. */
+/* Ruwa SSB chrome: content-only window.
+   Everything is controlled outside the page: tray menu (Show / Settings /
+   Quit), Ctrl+R to reload, F11 for fullscreen. This file is managed by
+   Ruwa and overwritten on every launch; put your own rules in
+   ~/.config/ruwa/mods/<name>/mod.css instead (they apply to the site). */
 
 #navigator-toolbox {
-  display: flex !important;
-  flex-direction: column !important;
-}
-
-#TabsToolbar {
-  visibility: collapse !important;
-}
-
-#nav-bar {
-  visibility: visible !important;
-  box-shadow: none !important;
-  border-top: none !important;
-  padding: 2px 6px !important;
-}
-
-#urlbar-container,
-#search-container {
   display: none !important;
 }

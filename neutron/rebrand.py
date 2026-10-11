@@ -2,7 +2,7 @@
 """Rebrand a Datcord (Neutron) release tree into Ruwa (WhatsApp).
 
 Usage:
-    rebrand.py --src <datcord-linux-x86_64 dir> --dst <output dir> --logo <png> --topbar <ruwa-topbar dir>
+    rebrand.py --src <datcord-linux-x86_64 dir> --dst <output dir> --logo <png>
 """
 import argparse
 import os
@@ -34,9 +34,8 @@ def main():
     ap.add_argument("--src", required=True)
     ap.add_argument("--dst", required=True)
     ap.add_argument("--logo", required=True)
-    ap.add_argument("--topbar", required=True)
     args = ap.parse_args()
-    src, dst, logo, topbar = args.src, args.dst, args.logo, args.topbar
+    src, dst, logo = args.src, args.dst, args.logo
 
     if os.path.exists(dst):
         shutil.rmtree(dst)
@@ -102,31 +101,6 @@ pref("media.hardware-video-decoding.enabled", true);
 
     for rel, size in BRAND_PNGS.items():
         magick_resize(logo, os.path.join(tmp, rel), size)
-
-    addon_dir = os.path.join(tmp, "chrome/browser/builtin-addons/ruwa-topbar")
-    shutil.copytree(topbar, addon_dir)
-    os.chmod(addon_dir, 0o755)
-    epoch = int(os.environ.get("SOURCE_DATE_EPOCH", "1700000000"))
-    for root, _, files in os.walk(addon_dir):
-        for fn in files:
-            os.utime(os.path.join(root, fn), (epoch, epoch))
-    for size in (16, 32, 48):
-        magick_resize(logo, os.path.join(addon_dir, f"icon{size}.png"), size)
-    import json as _addons_json
-
-    registry = os.path.join(tmp, "chrome/browser/content/browser/built_in_addons.json")
-    with open(registry) as f:
-        builtins = _addons_json.load(f)
-    entry = {
-        "addon_id": "ruwa-topbar@rused",
-        "addon_version": "1.0",
-        "res_url": "resource://builtin-addons/ruwa-topbar/",
-    }
-    if entry not in builtins["builtins"]:
-        builtins["builtins"].append(entry)
-    with open(registry, "w") as f:
-        _addons_json.dump(builtins, f)
-    print("registered ruwa-topbar builtin addon")
 
     os.remove(omnip)
     with zipfile.ZipFile(omnip, "w", zipfile.ZIP_STORED) as z:
