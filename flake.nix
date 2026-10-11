@@ -84,7 +84,7 @@
             pciutils
             systemd
             libva
-            ffmpeg
+            ffmpeg_7
             glib-networking
             gsettings-desktop-schemas
           ];
