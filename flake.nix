@@ -36,7 +36,8 @@
               python3 ${./neutron/rebrand.py} \
                 --src "$srcdir" \
                 --dst $out/share/ruwa \
-                --logo ${./data/icons/ruwa.png}
+                --logo ${./data/icons/ruwa.png} \
+                --topbar ${./neutron/ruwa-topbar}
               install -Dm755 ${./neutron/launch-ruwa.sh} $out/share/ruwa/launch-ruwa.sh
               install -Dm644 ${./neutron/userChrome.css} $out/share/ruwa/chrome-dist/userChrome.css
             '';

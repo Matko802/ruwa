@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0;
+    min-width: 220px;
+    font: 13px system-ui, sans-serif;
+    background: #1a1e24;
+    color: #e8eaed;
+  }
+  @media (prefers-color-scheme: light) {
+    body { background: #f4f5f6; color: #202124; }
+  }
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px 6px;
+    font-weight: 700;
+  }
+  .head img { width: 20px; height: 20px; border-radius: 5px; }
+  button {
+    display: block;
+    width: calc(100% - 16px);
+    margin: 2px 8px;
+    padding: 7px 10px;
+    text-align: left;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  button:hover { background: rgba(127, 127, 127, 0.25); }
+  hr { border: 0; border-top: 1px solid rgba(127, 127, 127, 0.35); margin: 6px 8px; }
+  .foot { padding: 2px 12px 10px; font-size: 11px; opacity: 0.6; }
+</style>
+</head>
+<body>
+  <div class="head"><img src="icon32.png" alt="">Ruwa</div>
+  <button id="reload">Reload WhatsApp</button>
+  <button id="home">WhatsApp home</button>
+  <button id="fullscreen">Toggle fullscreen</button>
+  <hr>
+  <div class="foot">Ruwa 0.1.0 · Firefox engine</div>
+  <script src="popup.js"></script>
+</body>
+</html>
