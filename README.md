@@ -9,15 +9,19 @@ tray menu (Show / Reload / Settings / Quit), `Ctrl+R` to reload, `F11`
 for fullscreen.
 
 Site styling comes from `userContent.css`, rebuilt on every launch from
-the Ruwa base plus your own mods: drop a folder with a `mod.css` file
-into `~/.config/ruwa/mods/<name>/` to restyle WhatsApp itself (thin
-scrollbars ship as the base example). Disable a mod without deleting it
-by creating an empty file at `~/.config/ruwa/mods/<name>/disabled`, or
-toggle it in Settings → Mods. For one-off tweaks, Settings has
-a Custom CSS editor writing `~/.config/ruwa/custom.css`, applied after
-mods. The window chrome file (`chrome/userChrome.css`) is managed by
-Ruwa; your rules belong in mods or custom CSS, which are never
-overwritten.
+the Ruwa base plus your own tweaks: Settings has a Custom CSS editor
+writing `~/.config/ruwa/custom.css`. The window chrome file
+(`chrome/userChrome.css`) is managed by Ruwa; your rules belong in
+custom CSS, which is never overwritten.
+
+Premade mods ship with Ruwa and run inside WhatsApp Web — toggle them
+in Settings → Mods (takes effect on next launch). Ships with **UAAA
+Decryptor**: messages containing `UAAA…` cipher blobs get inline
+Decrypt buttons, and an Encrypt button appears while you type in the
+chat box. Made for fun, not secure — see
+[`mods/uaaa-decryptor/`](mods/uaaa-decryptor/). To add a mod, drop a
+folder with a `mod.json` + JS files into `mods/` (see the UAAA mod for
+the format) and rebuild.
 
 ## Install (Nix)
 
@@ -50,10 +54,9 @@ focuses the running window via Firefox remoting.
   bundled `open-in-default-browser` helper; only WhatsApp hosts
   (`whatsapp.com`, `whatsapp.net`, `wa.me`, incl. subdomains) stay
   in-app.
-- Downloads auto-save to the Settings download folder (`~/Downloads` by
-  default, `~/` and `$HOME/` prefixes supported) without prompting,
-  including sandboxed blob saves; PDFs save as files instead of opening
-  inline.
+- Downloads use Neutron's default handling (Ruwa no longer overrides
+  any `browser.download.*` prefs; stale Ruwa-managed entries are removed
+  from `user.js` on next Settings save).
 - Voice/video calls need mic/camera permission (pre-granted for
   WhatsApp origins) plus xdg-desktop-portal + PipeWire on Wayland.
 - The tray icon needs a StatusNotifier host (KDE natively, GNOME via

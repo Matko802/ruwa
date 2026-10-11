@@ -11,7 +11,6 @@ else
 fi
 APPDIR="${RUWA_DIR:-$DEFAULT_DIR}"
 PROFILE="${RUWA_PROFILE:-${XDG_DATA_HOME:-$HOME/.local/share}/ruwa/profile}"
-MODS="${XDG_CONFIG_HOME:-$HOME/.config}/ruwa/mods"
 CUSTOM_CSS="${XDG_CONFIG_HOME:-$HOME/.config}/ruwa/custom.css"
 
 case "${RUWA_BACKEND:-auto}" in
@@ -35,21 +34,19 @@ fi
 
 install -m644 "$APPDIR/chrome-dist/userChrome.css" "$PROFILE/chrome/userChrome.css"
 
+# Site style is rebuilt on every launch: Ruwa base plus the user's
+# custom CSS. The trailing block publishes the enabled premade mods to
+# the bundled ruwa-mods content script via --ruwa-mods (read from the
+# ruwa.mods.enabled user.js pref written by Settings).
+ENABLED_MODS="$(sed -n 's/^user_pref("ruwa\.mods\.enabled", "\(.*\)");$/\1/p' "$PROFILE/user.js" 2>/dev/null | tail -n 1)"
+ENABLED_MODS="$(printf '%s' "$ENABLED_MODS" | tr -cd 'a-z0-9- ')"
 {
   cat "$APPDIR/chrome-dist/userContent-base.css"
-  for mod in "$MODS"/*/mod.css; do
-    [ -f "$mod" ] || continue
-    moddir="$(dirname "$mod")"
-    if [ -f "$moddir/disabled" ]; then
-      continue
-    fi
-    printf '\n/* mod: %s */\n' "$mod"
-    cat "$mod"
-  done
   if [ -f "$CUSTOM_CSS" ]; then
     printf '\n/* custom.css */\n'
     cat "$CUSTOM_CSS"
   fi
+  printf '\n@-moz-document domain(web.whatsapp.com) {\n  :root { --ruwa-mods: "%s"; }\n}\n' "$ENABLED_MODS"
 } > "$PROFILE/chrome/userContent.css.tmp"
 mv "$PROFILE/chrome/userContent.css.tmp" "$PROFILE/chrome/userContent.css"
 

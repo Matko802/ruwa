@@ -1,6 +1,6 @@
 [package]
 name = "ruwa-tray"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.85"
 description = "Ruwa tray supervisor + settings (Neutron build companion)"
@@ -19,4 +19,4 @@ path = "src/bin/ruwa-settings.rs"
 [dependencies]
 ksni = { version = "0.3", features = ["blocking"] }
 fs2 = "0.4"
-gtk = { package = "gtk4", version = "0.9", features = ["v4_10"] }
+gtk = { package = "gtk4", version = "0.9" }

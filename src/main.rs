@@ -84,10 +84,6 @@ fn paint_icon_with_attention(attention: bool) -> Icon {
     }
 }
 
-fn paint_icon() -> Icon {
-    paint_icon_with_attention(false)
-}
-
 struct RuwaTray {
     tx: Sender<TrayAction>,
     engine_alive: Arc<AtomicBool>,
@@ -502,7 +498,7 @@ mod tests {
 
     #[test]
     fn icon_has_expected_pixels() {
-        let icon = paint_icon();
+        let icon = paint_icon_with_attention(false);
         assert_eq!(icon.width, 64);
         assert_eq!(icon.height, 64);
         assert_eq!(icon.data.len(), 64 * 64 * 4);

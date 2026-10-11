@@ -1,8 +1,13 @@
 /* Ruwa base site style for WhatsApp Web.
-   This header is managed by Ruwa; rules from
-   ~/.config/ruwa/mods/<name>/mod.css are appended below it on launch. */
+   Managed by Ruwa; your own tweaks belong in Settings -> Appearance
+   (custom CSS). The --ruwa-present flag below lets the bundled ruwa-mods
+   content script confirm user styles are applied. */
 
 @-moz-document domain(web.whatsapp.com), domain(whatsapp.com) {
+  :root {
+    --ruwa-present: "1";
+  }
+
   #app {
     text-rendering: optimizeLegibility;
   }

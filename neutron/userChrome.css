@@ -1,8 +1,8 @@
 /* Ruwa SSB chrome: content-only window.
    Everything is controlled outside the page: tray menu (Show / Settings /
    Quit), Ctrl+R to reload, F11 for fullscreen. This file is managed by
-   Ruwa and overwritten on every launch; put your own rules in
-   ~/.config/ruwa/mods/<name>/mod.css instead (they apply to the site). */
+   Ruwa and overwritten on every launch; site tweaks belong in Settings
+   -> Appearance (custom CSS), site features in Settings -> Mods. */
 
 #navigator-toolbox {
   display: none !important;

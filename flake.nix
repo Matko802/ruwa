@@ -22,7 +22,7 @@
           };
           tree = pkgs.stdenv.mkDerivation {
             pname = "ruwa-tree";
-            version = "0.2.0";
+            version = "0.3.0";
             src = datcordSrc;
             dontConfigure = true;
             dontBuild = true;
@@ -36,10 +36,14 @@
               python3 ${./neutron/rebrand.py} \
                 --src "$srcdir" \
                 --dst $out/share/ruwa \
-                --logo ${./data/icons/ruwa.png}
+                --logo ${./data/icons/ruwa.png} \
+                --mods-dir ${./mods} \
+                --loader-template ${./neutron/ruwa-mods-loader.js} \
+                --manifest-template ${./neutron/ruwa-mods-manifest.json}
               install -Dm755 ${./neutron/launch-ruwa.sh} $out/share/ruwa/launch-ruwa.sh
               install -Dm644 ${./neutron/userChrome.css} $out/share/ruwa/chrome-dist/userChrome.css
               install -Dm644 ${./neutron/userContent-base.css} $out/share/ruwa/chrome-dist/userContent-base.css
+              cp -r ${./mods} $out/share/ruwa/mods
             '';
           };
           fhsLibs = with pkgs; [
@@ -101,7 +105,7 @@
           '';
           supervisor = pkgs.rustPlatform.buildRustPackage {
             pname = "ruwa-supervisor";
-            version = "0.2.0";
+            version = "0.3.0";
             src = nixpkgs.lib.cleanSource ./.;
             cargoLock.lockFile = ./Cargo.lock;
             nativeBuildInputs = with pkgs; [

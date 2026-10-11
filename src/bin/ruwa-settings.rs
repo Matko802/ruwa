@@ -136,7 +136,7 @@ fn build_ui(app: &gtk::Application) {
     notebook.set_vexpand(true);
 
     notebook.append_page(
-        &page_scroll(&general_page(&state, &profile, &status, &window)),
+        &page_scroll(&general_page(&state, &profile, &status)),
         Some(&gtk::Label::new(Some("General"))),
     );
     notebook.append_page(
@@ -146,6 +146,10 @@ fn build_ui(app: &gtk::Application) {
     notebook.append_page(
         &page_scroll(&appearance_page(&status)),
         Some(&gtk::Label::new(Some("Appearance"))),
+    );
+    notebook.append_page(
+        &page_scroll(&mods_page(&profile, &status)),
+        Some(&gtk::Label::new(Some("Mods"))),
     );
     notebook.append_page(
         &page_scroll(&system_page(&state, &profile, &status)),
@@ -168,7 +172,6 @@ fn general_page(
     state: &Rc<RefCell<Prefs>>,
     profile: &Rc<std::path::PathBuf>,
     status: &gtk::Label,
-    window: &gtk::ApplicationWindow,
 ) -> gtk::Box {
     let body = page();
     body.append(&caption("Behavior"));
@@ -215,112 +218,6 @@ fn general_page(
             save(&st, &profile, &status);
         });
         body.append(&card_row("Display backend", &display));
-    }
-
-    body.append(&caption("Downloads"));
-    {
-        let st = state.clone();
-        let status = status.clone();
-        let profile = profile.clone();
-        let dl = gtk::Entry::new();
-        if !st.borrow().download_dir.trim().is_empty() {
-            dl.set_text(&st.borrow().download_dir);
-        }
-        dl.set_placeholder_text(Some("~/Downloads"));
-        dl.set_hexpand(true);
-        dl.set_tooltip_text(Some("Supports ~/ and $HOME/ prefixes"));
-        let pending: Rc<RefCell<Option<gtk::glib::SourceId>>> = Rc::new(RefCell::new(None));
-        let save_debounced = {
-            let st = st.clone();
-            let status = status.clone();
-            let profile = profile.clone();
-            let pending = pending.clone();
-            move |text: String| {
-                if let Some(id) = pending.borrow_mut().take() {
-                    id.remove();
-                }
-                let st = st.clone();
-                let status = status.clone();
-                let profile = profile.clone();
-                let pending_inner = pending.clone();
-                let id = gtk::glib::timeout_add_local_once(
-                    std::time::Duration::from_millis(600),
-                    move || {
-                        *pending_inner.borrow_mut() = None;
-                        st.borrow_mut().download_dir = text;
-                        save(&st, &profile, &status);
-                    },
-                );
-                *pending.borrow_mut() = Some(id);
-            }
-        };
-        dl.connect_changed(move |e| {
-            save_debounced(e.text().to_string());
-        });
-        let browse = gtk::Button::with_label("Browse…");
-        browse.set_valign(gtk::Align::Center);
-        {
-            let st = st.clone();
-            let status = status.clone();
-            let profile = profile.clone();
-            let window_weak = window.downgrade();
-            let dl_weak = dl.downgrade();
-            browse.connect_clicked(move |_| {
-                let Some(window) = window_weak.upgrade() else {
-                    return;
-                };
-                let dialog = gtk::FileDialog::builder()
-                    .title("Choose download folder")
-                    .build();
-                let st = st.clone();
-                let status = status.clone();
-                let profile = profile.clone();
-                let dl_weak = dl_weak.clone();
-                dialog.select_folder(Some(&window), gtk::gio::Cancellable::NONE, move |res| {
-                    match res {
-                        Ok(file) => {
-                            if let Some(path) = file.path() {
-                                let s = path.to_string_lossy().to_string();
-                                if let Some(entry) = dl_weak.upgrade() {
-                                    entry.set_text(&s);
-                                }
-                                st.borrow_mut().download_dir = s;
-                                save(&st, &profile, &status);
-                            }
-                        }
-                        Err(_) => {}
-                    }
-                });
-            });
-        }
-        let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        row.append(&dl);
-        row.append(&browse);
-        let eff = gtk::Label::new(Some(&format!(
-            "Effective: {}",
-            settings::effective_download_dir(&state.borrow()).display()
-        )));
-        eff.set_xalign(0.0);
-        eff.set_css_classes(&["dim-label"]);
-        {
-            let st = state.clone();
-            let eff = eff.clone();
-            let tick = move || {
-                eff.set_text(&format!(
-                    "Effective: {}",
-                    settings::effective_download_dir(&st.borrow()).display()
-                ));
-                gtk::glib::ControlFlow::Continue
-            };
-            gtk::glib::timeout_add_seconds_local(1, tick);
-        }
-        let wrap = gtk::Box::new(gtk::Orientation::Vertical, 6);
-        let title = gtk::Label::new(Some("Download folder"));
-        title.set_xalign(0.0);
-        wrap.append(&title);
-        wrap.append(&row);
-        wrap.append(&eff);
-        body.append(&card_wrap(&wrap));
     }
     body
 }
@@ -385,7 +282,7 @@ fn appearance_page(status: &gtk::Label) -> gtk::Box {
     let body = page();
     body.append(&caption("Custom CSS"));
     body.append(&hint(
-        "Custom CSS (~/.config/ruwa/custom.css), applied after mods. Reload the page to apply edits.",
+        "Custom CSS (~/.config/ruwa/custom.css). Reload the page to apply edits.",
     ));
     {
         let status = status.clone();
@@ -428,49 +325,74 @@ fn appearance_page(status: &gtk::Label) -> gtk::Box {
             }
         });
         btn_row.append(&save_css);
-        let open_mods = gtk::Button::with_label("Open mods folder");
-        open_mods.set_css_classes(&["pill"]);
-        open_mods.connect_clicked(move |_| {
-            let dir = settings::mods_dir();
-            let _ = std::fs::create_dir_all(&dir);
-            let _ = std::process::Command::new("xdg-open")
-                .arg(&dir)
-                .stdin(std::process::Stdio::null())
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .spawn();
-        });
-        btn_row.append(&open_mods);
         body.append(&btn_row);
     }
+    body
+}
 
-    body.append(&caption("Mods"));
+fn mods_page(profile: &Rc<std::path::PathBuf>, status: &gtk::Label) -> gtk::Box {
+    let body = page();
+    body.append(&caption("Premade mods"));
     body.append(&hint(
-        "Each ~/.config/ruwa/mods/<name>/mod.css is appended on launch. Toggle to enable/disable.",
+        "Mods bundled with Ruwa. They run inside WhatsApp Web and take effect on next launch.",
     ));
     {
-        let mods = settings::list_mods();
-        if mods.is_empty() {
-            body.append(&card_wrap(&hint("No mods installed yet.")));
+        let available = settings::available_mods();
+        if available.is_empty() {
+            body.append(&card_wrap(&hint("No premade mods found in this build.")));
+            return body;
         }
-        for m in mods {
+        let enabled = settings::read_mods_enabled(profile);
+        for m in &available {
+            let card = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+            card.set_css_classes(&["ruwa-card"]);
+            let text = gtk::Box::new(gtk::Orientation::Vertical, 2);
+            text.set_hexpand(true);
+            let title = gtk::Label::new(None);
+            title.set_markup(&format!(
+                "<b>{}</b>  <span alpha=\"60%\">v{}</span>",
+                gtk::glib::markup_escape_text(&m.name),
+                gtk::glib::markup_escape_text(&m.version)
+            ));
+            title.set_xalign(0.0);
+            title.set_wrap(true);
+            text.append(&title);
+            if !m.description.trim().is_empty() {
+                let desc = gtk::Label::new(Some(&m.description));
+                desc.set_xalign(0.0);
+                desc.set_wrap(true);
+                desc.set_css_classes(&["dim-label"]);
+                text.append(&desc);
+            }
+            card.append(&text);
             let sw = gtk::Switch::new();
-            sw.set_active(m.enabled);
+            sw.set_active(enabled.contains(&m.id));
             sw.set_halign(gtk::Align::End);
             sw.set_valign(gtk::Align::Center);
-            let name = m.name.clone();
-            let status = status.clone();
-            sw.connect_state_set(move |_, on| {
-                match settings::set_mod_enabled(&name, on) {
-                    Ok(()) => status.set_text(&format!(
-                        "Mod '{name}' {}. Takes effect on next launch.",
-                        if on { "enabled" } else { "disabled" }
-                    )),
-                    Err(e) => status.set_text(&format!("Mod toggle failed: {e}")),
-                }
-                gtk::glib::Propagation::Proceed
-            });
-            body.append(&card_row(&format!("mod: {}", m.name), &sw));
+            {
+                let id = m.id.clone();
+                let profile = profile.clone();
+                let status = status.clone();
+                sw.connect_state_set(move |_, on| {
+                    let mut ids = settings::read_mods_enabled(&profile);
+                    if on {
+                        if !ids.contains(&id) {
+                            ids.push(id.clone());
+                        }
+                    } else {
+                        ids.retain(|x| x != &id);
+                    }
+                    match settings::write_mods_enabled(&profile, &ids) {
+                        Ok(()) => status.set_text(&format!(
+                            "Mod '{id}' {}. Takes effect on next launch.",
+                            if on { "enabled" } else { "disabled" }
+                        )),
+                        Err(e) => status.set_text(&format!("Mod toggle failed: {e}")),
+                    }
+                    gtk::glib::Propagation::Proceed
+                });
+            }
+            body.append(&card);
         }
     }
     body

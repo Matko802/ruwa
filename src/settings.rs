@@ -72,7 +72,6 @@ pub struct Prefs {
     pub gpu_accel: bool,
     pub vaapi: bool,
     pub audio: AudioBackend,
-    pub download_dir: String,
     pub close_to_tray: bool,
     pub start_minimized: bool,
     pub display: DisplayBackend,
@@ -84,7 +83,6 @@ impl Default for Prefs {
             gpu_accel: true,
             vaapi: true,
             audio: AudioBackend::Auto,
-            download_dir: String::new(),
             close_to_tray: true,
             start_minimized: false,
             display: DisplayBackend::Auto,
@@ -177,38 +175,6 @@ fn string_pref_line(content: &str, key: &str) -> Option<String> {
     None
 }
 
-pub fn default_download_dir() -> PathBuf {
-    home_dir().join("Downloads")
-}
-
-pub fn expand_path(raw: &str) -> PathBuf {
-    let s = raw.trim();
-    if s.is_empty() {
-        return default_download_dir();
-    }
-    if s == "~" {
-        return home_dir();
-    }
-    if let Some(rest) = s.strip_prefix("~/") {
-        return home_dir().join(rest);
-    }
-    if let Some(rest) = s.strip_prefix("$HOME/") {
-        return home_dir().join(rest);
-    }
-    if s == "$HOME" {
-        return home_dir();
-    }
-    PathBuf::from(s)
-}
-
-pub fn effective_download_dir(p: &Prefs) -> PathBuf {
-    if p.download_dir.trim().is_empty() {
-        default_download_dir()
-    } else {
-        expand_path(&p.download_dir)
-    }
-}
-
 pub fn read_prefs(profile: &Path) -> Prefs {
     let mut out = Prefs::default();
     let Ok(content) = std::fs::read_to_string(user_js_path(profile)) else {
@@ -222,11 +188,6 @@ pub fn read_prefs(profile: &Path) -> Prefs {
     }
     if let Some(v) = string_pref_line(&content, "media.cubeb.backend") {
         out.audio = AudioBackend::from_pref(&v);
-    }
-    if let Some(v) = string_pref_line(&content, "browser.download.dir") {
-        if v != default_download_dir().to_string_lossy() {
-            out.download_dir = v;
-        }
     }
     if let Some(v) = bool_pref_line(&content, "ruwa.close_to_tray") {
         out.close_to_tray = v;
@@ -265,6 +226,16 @@ fn quoted(s: &str) -> String {
     format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
+const MANAGED_DOWNLOAD_KEYS: &[&str] = &[
+    "browser.download.dir",
+    "browser.download.folderList",
+    "browser.download.useDownloadDir",
+    "browser.download.always_ask_before_handling_new_types",
+    "browser.download.start_downloads_in_tmp_dir",
+    "browser.download.allow_save_from_sandboxed_iframes",
+    "browser.download.open_pdf_attachments_inline",
+];
+
 pub fn write_prefs(profile: &Path, prefs: &Prefs) -> io::Result<()> {
     std::fs::create_dir_all(profile)?;
     let path = user_js_path(profile);
@@ -292,35 +263,10 @@ pub fn write_prefs(profile: &Path, prefs: &Prefs) -> io::Result<()> {
             !(l.trim().starts_with("user_pref(") && l.contains("\"media.cubeb.backend\""))
         }),
     }
-    let dl = effective_download_dir(prefs);
-    let _ = std::fs::create_dir_all(&dl);
-    set_pref_line(
-        &mut lines,
-        "browser.download.dir",
-        &quoted(&dl.to_string_lossy()),
-    );
-    set_pref_line(&mut lines, "browser.download.folderList", "2");
-    set_pref_line(&mut lines, "browser.download.useDownloadDir", "true");
-    set_pref_line(
-        &mut lines,
-        "browser.download.always_ask_before_handling_new_types",
-        "false",
-    );
-    set_pref_line(
-        &mut lines,
-        "browser.download.start_downloads_in_tmp_dir",
-        "false",
-    );
-    set_pref_line(
-        &mut lines,
-        "browser.download.allow_save_from_sandboxed_iframes",
-        "true",
-    );
-    set_pref_line(
-        &mut lines,
-        "browser.download.open_pdf_attachments_inline",
-        "false",
-    );
+    for key in MANAGED_DOWNLOAD_KEYS {
+        let needle = format!("\"{key}\"");
+        lines.retain(|l| !(l.trim().starts_with("user_pref(") && l.contains(&needle)));
+    }
     set_pref_line(
         &mut lines,
         "ruwa.close_to_tray",
@@ -447,25 +393,142 @@ pub fn sibling_binary(name: &str) -> Option<PathBuf> {
     None
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ModInfo {
-    pub name: String,
-    pub enabled: bool,
+pub const MODS_ENABLED_PREF: &str = "ruwa.mods.enabled";
+
+pub fn valid_mod_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 64
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+        && !id.starts_with('-')
+        && !id.ends_with('-')
 }
 
-pub fn mods_dir() -> PathBuf {
-    if let Ok(p) = std::env::var("XDG_CONFIG_HOME") {
-        if !p.trim().is_empty() {
-            return PathBuf::from(p).join("ruwa").join("mods");
+pub fn read_mods_enabled(profile: &Path) -> Vec<String> {
+    let Ok(content) = std::fs::read_to_string(user_js_path(profile)) else {
+        return Vec::new();
+    };
+    let Some(raw) = string_pref_line(&content, MODS_ENABLED_PREF) else {
+        return Vec::new();
+    };
+    let mut out: Vec<String> = raw
+        .split(|c: char| c == ' ' || c == ',')
+        .filter(|s| valid_mod_id(s))
+        .map(String::from)
+        .collect();
+    out.sort();
+    out.dedup();
+    out
+}
+
+pub fn write_mods_enabled(profile: &Path, ids: &[String]) -> io::Result<()> {
+    std::fs::create_dir_all(profile)?;
+    let path = user_js_path(profile);
+    let content = std::fs::read_to_string(&path).unwrap_or_default();
+    let mut lines: Vec<String> = content.lines().map(str::to_string).collect();
+    let mut clean: Vec<String> = ids.iter().filter(|s| valid_mod_id(s)).cloned().collect();
+    clean.sort();
+    clean.dedup();
+    set_pref_line(&mut lines, MODS_ENABLED_PREF, &quoted(&clean.join(" ")));
+    let mut out = lines.join("\n");
+    out.push('\n');
+    std::fs::write(path, out)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PremadeMod {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub description: String,
+}
+
+fn json_string_field(src: &str, key: &str) -> Option<String> {
+    let needle = format!("\"{key}\"");
+    let mut search = 0usize;
+    while let Some(rel) = src[search..].find(&needle) {
+        let mut i = search + rel + needle.len();
+        let b = src.as_bytes();
+        while i < b.len() && (b[i] == b' ' || b[i] == b'\t' || b[i] == b'\n' || b[i] == b'\r') {
+            i += 1;
+        }
+        if i >= b.len() || b[i] != b':' {
+            search = search + rel + 1;
+            continue;
+        }
+        i += 1;
+        while i < b.len() && (b[i] == b' ' || b[i] == b'\t' || b[i] == b'\n' || b[i] == b'\r') {
+            i += 1;
+        }
+        if i >= b.len() || b[i] != b'"' {
+            search = search + rel + 1;
+            continue;
+        }
+        i += 1;
+        let mut out = String::new();
+        loop {
+            if i >= b.len() {
+                return None;
+            }
+            match b[i] {
+                b'"' => return Some(out),
+                b'\\' => {
+                    i += 1;
+                    if i >= b.len() {
+                        return None;
+                    }
+                    match b[i] {
+                        b'"' => out.push('"'),
+                        b'\\' => out.push('\\'),
+                        b'/' => out.push('/'),
+                        b'n' => out.push('\n'),
+                        b't' => out.push('\t'),
+                        b'r' => out.push('\r'),
+                        _ => return None,
+                    }
+                    i += 1;
+                }
+                _ => {
+                    out.push(b[i] as char);
+                    i += 1;
+                }
+            }
         }
     }
-    home_dir().join(".config").join("ruwa").join("mods")
+    None
 }
 
-pub fn list_mods() -> Vec<ModInfo> {
-    let dir = mods_dir();
+pub fn premade_mods_dir() -> Option<PathBuf> {
+    if let Ok(p) = std::env::var("RUWA_DIR") {
+        if !p.trim().is_empty() {
+            return Some(PathBuf::from(p).join("mods"));
+        }
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(bin) = exe.parent() {
+            if let Some(prefix) = bin.parent() {
+                let packaged = prefix.join("share").join("ruwa").join("mods");
+                if packaged.is_dir() {
+                    return Some(packaged);
+                }
+            }
+        }
+        let mut dir = exe.parent().map(Path::to_path_buf);
+        for _ in 0..8 {
+            let Some(d) = dir else { break };
+            if d.join("mods").is_dir() && d.join("Cargo.toml").is_file() {
+                return Some(d.join("mods"));
+            }
+            dir = d.parent().map(Path::to_path_buf);
+        }
+    }
+    None
+}
+
+pub fn scan_mods(dir: &Path) -> Vec<PremadeMod> {
     let mut out = Vec::new();
-    let Ok(entries) = std::fs::read_dir(&dir) else {
+    let Ok(entries) = std::fs::read_dir(dir) else {
         return out;
     };
     for entry in entries.flatten() {
@@ -473,39 +536,37 @@ pub fn list_mods() -> Vec<ModInfo> {
         if !path.is_dir() {
             continue;
         }
-        if !path.join("mod.css").is_file() {
-            continue;
-        }
-        let Some(name) = path.file_name().and_then(|s| s.to_str()).map(String::from) else {
+        let Some(id) = path.file_name().and_then(|s| s.to_str()) else {
             continue;
         };
-        let enabled = !path.join("disabled").exists();
-        out.push(ModInfo { name, enabled });
+        if !valid_mod_id(id) {
+            continue;
+        }
+        let meta_path = path.join("mod.json");
+        let Ok(meta) = std::fs::read_to_string(&meta_path) else {
+            continue;
+        };
+        if json_string_field(&meta, "id").as_deref() != Some(id) {
+            continue;
+        }
+        let Some(name) = json_string_field(&meta, "name") else {
+            continue;
+        };
+        out.push(PremadeMod {
+            id: String::from(id),
+            name,
+            version: json_string_field(&meta, "version").unwrap_or_default(),
+            description: json_string_field(&meta, "description").unwrap_or_default(),
+        });
     }
-    out.sort_by(|a, b| a.name.cmp(&b.name));
+    out.sort_by(|a, b| a.id.cmp(&b.id));
     out
 }
 
-pub fn set_mod_enabled(name: &str, enabled: bool) -> io::Result<()> {
-    if name.contains('/') || name.contains('\0') || name.trim().is_empty() {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "invalid mod name",
-        ));
-    }
-    let marker = mods_dir().join(name).join("disabled");
-    if enabled {
-        match std::fs::remove_file(&marker) {
-            Ok(()) => Ok(()),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
-            Err(e) => Err(e),
-        }
-    } else {
-        if let Some(parent) = marker.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::write(marker, "disabled by Ruwa settings\n")
-    }
+pub fn available_mods() -> Vec<PremadeMod> {
+    premade_mods_dir()
+        .map(|d| scan_mods(&d))
+        .unwrap_or_default()
 }
 
 pub fn validate_css_braces(css: &str) -> Result<(), String> {
@@ -583,14 +644,12 @@ mod tests {
             gpu_accel: false,
             vaapi: false,
             audio: AudioBackend::Pulse,
-            download_dir: String::from("/tmp/ruwa-dl"),
             close_to_tray: false,
             start_minimized: true,
             display: DisplayBackend::X11,
         };
         write_prefs(&dir, &before).unwrap();
-        let mut after = read_prefs(&dir);
-        after.download_dir = before.download_dir.clone();
+        let after = read_prefs(&dir);
         assert_eq!(after, before);
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -622,16 +681,17 @@ mod tests {
     }
 
     #[test]
-    fn download_prefs_save_automatically() {
-        let dir = tmp_profile("dlfix");
+    fn neutron_download_defaults_restored() {
+        let dir = tmp_profile("dlstrip");
+        std::fs::write(
+            user_js_path(&dir),
+            "user_pref(\"browser.download.dir\", \"/tmp/old\");\nuser_pref(\"browser.download.folderList\", 2);\nuser_pref(\"browser.download.useDownloadDir\", true);\nuser_pref(\"browser.download.always_ask_before_handling_new_types\", false);\nuser_pref(\"browser.download.start_downloads_in_tmp_dir\", false);\nuser_pref(\"browser.download.allow_save_from_sandboxed_iframes\", true);\nuser_pref(\"browser.download.open_pdf_attachments_inline\", false);\nuser_pref(\"gfx.webrender.all\", true);\n",
+        )
+        .unwrap();
         write_prefs(&dir, &Prefs::default()).unwrap();
         let content = std::fs::read_to_string(user_js_path(&dir)).unwrap();
-        assert!(content.contains("browser.download.folderList\", 2);"));
-        assert!(content.contains("browser.download.useDownloadDir\", true);"));
-        assert!(content.contains("always_ask_before_handling_new_types\", false);"));
-        assert!(content.contains("start_downloads_in_tmp_dir\", false);"));
-        assert!(content.contains("allow_save_from_sandboxed_iframes\", true);"));
-        assert!(content.contains("open_pdf_attachments_inline\", false);"));
+        assert!(!content.contains("browser.download."));
+        assert!(content.contains("user_pref(\"gfx.webrender.all\", true);"));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -671,17 +731,63 @@ mod tests {
     }
 
     #[test]
-    fn download_tilde_expansion() {
-        let home = home_dir();
-        assert_eq!(expand_path("~/Downloads"), home.join("Downloads"));
-        assert_eq!(expand_path("~"), home);
-        assert_eq!(expand_path("$HOME/docs"), home.join("docs"));
-        assert_eq!(expand_path("/tmp/absolute"), PathBuf::from("/tmp/absolute"));
-        let p = Prefs {
-            download_dir: String::from("~/Music"),
-            ..Prefs::default()
-        };
-        assert_eq!(effective_download_dir(&p), home.join("Music"));
+    fn mods_enabled_round_trip_and_sanitize() {
+        let dir = tmp_profile("modsenabled");
+        write_mods_enabled(
+            &dir,
+            &[
+                String::from("uaaa-decryptor"),
+                String::from("EVIL;id"),
+                String::from("uaaa-decryptor"),
+                String::from(""),
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            read_mods_enabled(&dir),
+            vec![String::from("uaaa-decryptor")]
+        );
+        let content = std::fs::read_to_string(user_js_path(&dir)).unwrap();
+        assert!(content.contains("user_pref(\"ruwa.mods.enabled\", \"uaaa-decryptor\");"));
+        assert!(read_mods_enabled(&PathBuf::from("/nonexistent-ruwa-test")).is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn mod_id_validation() {
+        assert!(valid_mod_id("uaaa-decryptor"));
+        assert!(valid_mod_id("a1"));
+        assert!(!valid_mod_id(""));
+        assert!(!valid_mod_id("UPPER"));
+        assert!(!valid_mod_id("-lead"));
+        assert!(!valid_mod_id("trail-"));
+        assert!(!valid_mod_id("has space"));
+        assert!(!valid_mod_id("has/slash"));
+        assert!(!valid_mod_id("has.dot"));
+    }
+
+    #[test]
+    fn scan_mods_reads_registry() {
+        let base = std::env::temp_dir().join(format!("ruwa-test-scan-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let good = base.join("good-mod");
+        std::fs::create_dir_all(&good).unwrap();
+        std::fs::write(
+            good.join("mod.json"),
+            "{\"id\": \"good-mod\", \"name\": \"Good \\\"Mod\\\"\", \"version\": \"1.0\", \"description\": \"d\"}",
+        )
+        .unwrap();
+        let bad = base.join("bad-mod");
+        std::fs::create_dir_all(&bad).unwrap();
+        std::fs::write(bad.join("mod.json"), "{\"id\": \"other\", \"name\": \"x\"}").unwrap();
+        std::fs::create_dir_all(base.join("no-meta")).unwrap();
+        let mods = scan_mods(&base);
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].id, "good-mod");
+        assert_eq!(mods[0].name, "Good \"Mod\"");
+        assert_eq!(mods[0].version, "1.0");
+        assert!(scan_mods(&PathBuf::from("/nonexistent-ruwa-test")).is_empty());
+        let _ = std::fs::remove_dir_all(&base);
     }
 
     #[test]
