@@ -2,7 +2,7 @@
 mod settings;
 
 use gtk::prelude::*;
-use settings::{AudioBackend, DisplayBackend, Prefs};
+use settings::{AppConfig, DisplayBackend};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -81,23 +81,21 @@ fn main() {
 
 fn switch_row(
     parent: &gtk::Box,
-    state: &Rc<RefCell<Prefs>>,
-    profile: &Rc<std::path::PathBuf>,
+    state: &Rc<RefCell<AppConfig>>,
     status: &gtk::Label,
     label: &str,
-    get: impl Fn(&Prefs) -> bool + 'static,
-    set: impl Fn(&mut Prefs, bool) + 'static,
+    get: impl Fn(&AppConfig) -> bool + 'static,
+    set: impl Fn(&mut AppConfig, bool) + 'static,
 ) {
     let st = state.clone();
     let status = status.clone();
-    let profile = profile.clone();
     let sw = gtk::Switch::new();
     sw.set_active(get(&st.borrow()));
     sw.set_halign(gtk::Align::End);
     sw.set_valign(gtk::Align::Center);
     sw.connect_state_set(move |_, on| {
         set(&mut st.borrow_mut(), on);
-        save(&st, &profile, &status);
+        save(&st, &status);
         gtk::glib::Propagation::Proceed
     });
     parent.append(&card_row(label, &sw));
@@ -112,8 +110,7 @@ fn build_ui(app: &gtk::Application) {
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
 
-    let profile = std::rc::Rc::new(settings::profile_dir());
-    let state = Rc::new(RefCell::new(settings::read_prefs(&profile)));
+    let state = Rc::new(RefCell::new(settings::read_config()));
 
     let window = gtk::ApplicationWindow::builder()
         .application(app)
@@ -136,23 +133,23 @@ fn build_ui(app: &gtk::Application) {
     notebook.set_vexpand(true);
 
     notebook.append_page(
-        &page_scroll(&general_page(&state, &profile, &status)),
+        &page_scroll(&general_page(&state, &status)),
         Some(&gtk::Label::new(Some("General"))),
     );
     notebook.append_page(
-        &page_scroll(&performance_page(&state, &profile, &status)),
-        Some(&gtk::Label::new(Some("Performance"))),
+        &page_scroll(&calls_page()),
+        Some(&gtk::Label::new(Some("Calls"))),
     );
     notebook.append_page(
         &page_scroll(&appearance_page(&status)),
         Some(&gtk::Label::new(Some("Appearance"))),
     );
     notebook.append_page(
-        &page_scroll(&mods_page(&profile, &status)),
+        &page_scroll(&mods_page(&status)),
         Some(&gtk::Label::new(Some("Mods"))),
     );
     notebook.append_page(
-        &page_scroll(&system_page(&state, &profile, &status)),
+        &page_scroll(&system_page(&state, &status)),
         Some(&gtk::Label::new(Some("System"))),
     );
 
@@ -168,17 +165,12 @@ fn build_ui(app: &gtk::Application) {
     window.present();
 }
 
-fn general_page(
-    state: &Rc<RefCell<Prefs>>,
-    profile: &Rc<std::path::PathBuf>,
-    status: &gtk::Label,
-) -> gtk::Box {
+fn general_page(state: &Rc<RefCell<AppConfig>>, status: &gtk::Label) -> gtk::Box {
     let body = page();
     body.append(&caption("Behavior"));
     switch_row(
         &body,
         state,
-        profile,
         status,
         "Keep running in tray when window closes",
         |p| p.close_to_tray,
@@ -187,7 +179,6 @@ fn general_page(
     switch_row(
         &body,
         state,
-        profile,
         status,
         "Start minimized to tray",
         |p| p.start_minimized,
@@ -196,7 +187,6 @@ fn general_page(
     {
         let st = state.clone();
         let status = status.clone();
-        let profile = profile.clone();
         let display = gtk::DropDown::from_strings(&[
             DisplayBackend::Auto.label(),
             DisplayBackend::Wayland.label(),
@@ -215,66 +205,37 @@ fn general_page(
                 2 => DisplayBackend::X11,
                 _ => DisplayBackend::Auto,
             };
-            save(&st, &profile, &status);
+            save(&st, &status);
         });
         body.append(&card_row("Display backend", &display));
     }
+    body.append(&hint(
+        "If calls or screen-share misbehave on Wayland, try “X11 / XWayland”.",
+    ));
     body
 }
 
-fn performance_page(
-    state: &Rc<RefCell<Prefs>>,
-    profile: &Rc<std::path::PathBuf>,
-    status: &gtk::Label,
-) -> gtk::Box {
+fn calls_page() -> gtk::Box {
     let body = page();
-    body.append(&caption("Rendering"));
-    switch_row(
-        &body,
-        state,
-        profile,
-        status,
-        "GPU acceleration (WebRender)",
-        |p| p.gpu_accel,
-        |p, v| p.gpu_accel = v,
-    );
-    switch_row(
-        &body,
-        state,
-        profile,
-        status,
-        "Hardware video decoding (VA-API)",
-        |p| p.vaapi,
-        |p, v| p.vaapi = v,
-    );
-    body.append(&caption("Audio"));
+    body.append(&caption("Voice & video calls"));
+    body.append(&hint(
+        "Ruwa uses your system's WebKitGTK webview, so calls use GStreamer + PipeWire like a native app.",
+    ));
     {
-        let st = state.clone();
-        let status = status.clone();
-        let profile = profile.clone();
-        let audio = gtk::DropDown::from_strings(&[
-            AudioBackend::Auto.label(),
-            AudioBackend::Alsa.label(),
-            AudioBackend::Pulse.label(),
-        ]);
-        let selected = match st.borrow().audio {
-            AudioBackend::Auto => 0,
-            AudioBackend::Alsa => 1,
-            AudioBackend::Pulse => 2,
-        };
-        audio.set_selected(selected);
-        audio.set_valign(gtk::Align::Center);
-        audio.connect_selected_notify(move |d| {
-            st.borrow_mut().audio = match d.selected() {
-                1 => AudioBackend::Alsa,
-                2 => AudioBackend::Pulse,
-                _ => AudioBackend::Auto,
-            };
-            save(&st, &profile, &status);
-        });
-        body.append(&card_row("Audio backend", &audio));
+        let card = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        card.set_css_classes(&["ruwa-card"]);
+        for line in [
+            "Microphone, camera and notification access is granted automatically for WhatsApp origins.",
+            "On Wayland, screen-share goes through xdg-desktop-portal + PipeWire — keep your portal backend (e.g. xdg-desktop-portal-gtk / -kde / -wlr) running.",
+            "For better camera/codec support make sure GStreamer plugins (base, good, bad) and OpenH264 are installed on non-Nix systems.",
+        ] {
+            let label = gtk::Label::new(Some(line));
+            label.set_xalign(0.0);
+            label.set_wrap(true);
+            card.append(&label);
+        }
+        body.append(&card);
     }
-    body.append(&hint("Performance and audio apply on next launch."));
     body
 }
 
@@ -330,7 +291,7 @@ fn appearance_page(status: &gtk::Label) -> gtk::Box {
     body
 }
 
-fn mods_page(profile: &Rc<std::path::PathBuf>, status: &gtk::Label) -> gtk::Box {
+fn mods_page(status: &gtk::Label) -> gtk::Box {
     let body = page();
     body.append(&caption("Premade mods"));
     body.append(&hint(
@@ -342,7 +303,7 @@ fn mods_page(profile: &Rc<std::path::PathBuf>, status: &gtk::Label) -> gtk::Box 
             body.append(&card_wrap(&hint("No premade mods found in this build.")));
             return body;
         }
-        let enabled = settings::read_mods_enabled(profile);
+        let enabled = settings::read_mods_enabled();
         for m in &available {
             let card = gtk::Box::new(gtk::Orientation::Horizontal, 12);
             card.set_css_classes(&["ruwa-card"]);
@@ -371,10 +332,9 @@ fn mods_page(profile: &Rc<std::path::PathBuf>, status: &gtk::Label) -> gtk::Box 
             sw.set_valign(gtk::Align::Center);
             {
                 let id = m.id.clone();
-                let profile = profile.clone();
                 let status = status.clone();
                 sw.connect_state_set(move |_, on| {
-                    let mut ids = settings::read_mods_enabled(&profile);
+                    let mut ids = settings::read_mods_enabled();
                     if on {
                         if !ids.contains(&id) {
                             ids.push(id.clone());
@@ -382,7 +342,7 @@ fn mods_page(profile: &Rc<std::path::PathBuf>, status: &gtk::Label) -> gtk::Box 
                     } else {
                         ids.retain(|x| x != &id);
                     }
-                    match settings::write_mods_enabled(&profile, &ids) {
+                    match settings::write_mods_enabled(&ids) {
                         Ok(()) => status.set_text(&format!(
                             "Mod '{id}' {}. Takes effect on next launch.",
                             if on { "enabled" } else { "disabled" }
@@ -398,11 +358,7 @@ fn mods_page(profile: &Rc<std::path::PathBuf>, status: &gtk::Label) -> gtk::Box 
     body
 }
 
-fn system_page(
-    state: &Rc<RefCell<Prefs>>,
-    profile: &Rc<std::path::PathBuf>,
-    status: &gtk::Label,
-) -> gtk::Box {
+fn system_page(state: &Rc<RefCell<AppConfig>>, status: &gtk::Label) -> gtk::Box {
     let body = page();
     body.append(&caption("Startup"));
     {
@@ -430,11 +386,10 @@ fn system_page(
     body.append(&caption("Account"));
     {
         let status = status.clone();
-        let profile = profile.clone();
         let logout = gtk::Button::with_label("Log out (clear site data)");
         logout.set_hexpand(true);
         logout.set_css_classes(&["destructive-action", "pill"]);
-        logout.connect_clicked(move |_| match settings::clear_site_data(&profile) {
+        logout.connect_clicked(move |_| match settings::clear_site_data() {
             Ok(n) => status.set_text(&format!(
                 "Cleared {} entries. Log in again on next launch.",
                 n.len()
@@ -443,6 +398,9 @@ fn system_page(
         });
         body.append(&card_wrap(&logout));
     }
+    body.append(&hint(
+        "Note: the old Firefox-based Ruwa kept its login in a separate profile; after migrating, link your device again once.",
+    ));
 
     body.append(&caption("About"));
     {
@@ -463,8 +421,8 @@ fn system_page(
     body
 }
 
-fn save(state: &Rc<RefCell<Prefs>>, profile: &std::path::Path, status: &gtk::Label) {
-    match settings::write_prefs(profile, &state.borrow()) {
+fn save(state: &Rc<RefCell<AppConfig>>, status: &gtk::Label) {
+    match settings::write_config(&state.borrow()) {
         Ok(()) => status.set_text("Saved. Takes effect on next launch."),
         Err(e) => status.set_text(&format!("Save failed: {e}")),
     }

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Ruwa",
+  "version": "0.4.0",
+  "identifier": "com.rused.ruwa",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "",
+    "beforeBuildCommand": ""
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "category": "SocialNetworking",
+    "shortDescription": "Lightweight WhatsApp desktop client",
+    "icon": ["../data/icons/ruwa.png"]
+  }
+}

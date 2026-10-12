@@ -1,9 +1,9 @@
 [package]
-name = "ruwa-tray"
-version = "0.3.0"
+name = "ruwa"
+version = "0.4.0"
 edition = "2021"
 rust-version = "1.85"
-description = "Ruwa tray supervisor + settings (Neutron build companion)"
+description = "Ruwa WhatsApp desktop client (Tauri 2 + system WebKitGTK)"
 license = "GPL-3.0-only"
 
 [[bin]]
@@ -17,6 +17,11 @@ path = "src/bin/ruwa-settings.rs"
 [workspace]
 
 [dependencies]
-ksni = { version = "0.3", features = ["blocking"] }
-fs2 = "0.4"
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-opener = "2"
+webkit2gtk = { version = "2", features = ["v2_38"] }
 gtk = { package = "gtk4", version = "0.9" }
+
+[build-dependencies]
+tauri-build = "2"
