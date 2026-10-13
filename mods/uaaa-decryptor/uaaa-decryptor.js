@@ -66,6 +66,7 @@ function GM_registerMenuCommand() {
     const nodeQueue = new Set();
     let isProcessingQueue = false;
     const instances = new Set();
+    const scannedNodes = new WeakSet();
 
     // Tracks text mutations caused by our own script so we don't trigger infinite loops
     const ourInternalMutations = new WeakSet();
@@ -149,21 +150,36 @@ function GM_registerMenuCommand() {
 
     // --- Core Processing Logic ---
     function processTextNode(node) {
+      try {
+        processTextNodeInner(node);
+      } catch (e) {
+        console.warn('[UAAA] node skipped:', e && e.message);
+      }
+    }
+
+    function processTextNodeInner(node) {
         if (!node.nodeValue) return;
+        if (!document.body.contains(node)) return;
 
         const parent = node.parentNode;
         if (!parent || parent.isContentEditable || CONFIG.ignoreTags.has(parent.tagName)) {
             return;
         }
 
+        if (scannedNodes.has(node)) return;
+
         if (!node.nodeValue.includes('UAAA')) {
+            scannedNodes.add(node);
             return;
         }
 
         CONFIG.regex.lastIndex = 0;
         const match = CONFIG.regex.exec(node.nodeValue);
 
-        if (!match) return;
+        if (!match) {
+            scannedNodes.add(node);
+            return;
+        }
 
         // FIX: Clean up any old UAAA buttons in this bubble to prevent duplicates
         // when React rerenders or expands the text.
@@ -254,6 +270,8 @@ function GM_registerMenuCommand() {
             }
         };
         instances.add(instance);
+        if (instances.size > 5000) instances.clear();
+        scannedNodes.add(node);
     }
 
     // --- Performance Queuing ---
@@ -360,6 +378,7 @@ function GM_registerMenuCommand() {
         });
 
         btn.addEventListener('click', (e) => {
+          try {
             e.preventDefault();
             e.stopPropagation();
             state.preventHide = false;
@@ -379,7 +398,7 @@ function GM_registerMenuCommand() {
                 } catch (err) {
                     btn.textContent = 'Error';
                     btn.className = 'uaaa-btn error';
-                    console.error("[UAAA] Failed:", err.message);
+                    console.warn("[UAAA] crypt failed:", err.message);
                 }
             } else {
                 setElText(host, state.plaintext);
@@ -388,6 +407,9 @@ function GM_registerMenuCommand() {
                 btn.className = 'uaaa-btn';
             }
             host.focus();
+          } catch (err) {
+            console.warn('[UAAA] button skipped:', err && err.message);
+          }
         });
 
         return state;
@@ -432,6 +454,7 @@ function GM_registerMenuCommand() {
     }
 
     document.addEventListener('input', (e) => {
+      try {
         if (!isEligibleInput(e.target)) return;
         const el = getEditableHost(e.target) || e.target;
         const state = getOrCreateState(el);
@@ -448,17 +471,25 @@ function GM_registerMenuCommand() {
         }
 
         state.timer = setTimeout(() => showButton(state, el), CONFIG.inputIdleMs);
+      } catch (err) {
+        console.warn('[UAAA] input skipped:', err && err.message);
+      }
     }, true);
 
     document.addEventListener('focusin', (e) => {
+      try {
         if (!isEligibleInput(e.target)) return;
         const el = getEditableHost(e.target) || e.target;
         const state = getOrCreateState(el);
         clearTimeout(state.timer);
         state.timer = setTimeout(() => showButton(state, el), CONFIG.inputIdleMs);
+      } catch (err) {
+        console.warn('[UAAA] focus skipped:', err && err.message);
+      }
     }, true);
 
     document.addEventListener('focusout', (e) => {
+      try {
         if (!isEligibleInput(e.target)) return;
         const el = getEditableHost(e.target) || e.target;
         const state = inputStates.get(el);
@@ -466,6 +497,9 @@ function GM_registerMenuCommand() {
         if (state.preventHide) return;
         clearTimeout(state.timer);
         hideButton(state);
+      } catch (err) {
+        console.warn('[UAAA] blur skipped:', err && err.message);
+      }
     }, true);
 
     // --- Initialization & Observation ---
@@ -473,6 +507,7 @@ function GM_registerMenuCommand() {
     enqueueNode(document.body);
 
     const observer = new MutationObserver((mutations) => {
+      try {
         for (const mutation of mutations) {
             if (mutation.type === 'characterData') {
                 const target = mutation.target;
@@ -483,8 +518,9 @@ function GM_registerMenuCommand() {
                     continue;
                 }
 
-                // 2. WhatsApp dynamically changed the text (e.g. user clicked Read More)
-                // Queue the node to be reprocessed so the script can hook into the new text
+                // 2. WhatsApp dynamically changed the text (e.g. user clicked Read More):
+                // content changed, so allow a rescan of this node.
+                scannedNodes.delete(target);
                 enqueueNode(target);
 
             } else if (mutation.type === 'childList') {
@@ -493,6 +529,9 @@ function GM_registerMenuCommand() {
                 }
             }
         }
+      } catch (e) {
+        console.warn('[UAAA] observer skipped batch:', e && e.message);
+      }
     });
 
     observer.observe(document.body, {
