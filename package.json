@@ -1,0 +1,7 @@
+{
+  "name": "ruwa",
+  "version": "0.5.0",
+  "description": "Lightweight WhatsApp desktop client (Electron)",
+  "main": "main.js",
+  "license": "GPL-3.0-only"
+}

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #12171a; color: #e9edef;
+    font: 13px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif;
+    user-select: none; -webkit-user-select: none;
+  }
+  #bar {
+    display: flex; align-items: center; gap: 4px;
+    height: 40px; padding: 0 8px;
+    -webkit-app-region: drag;
+  }
+  #dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #25d366; margin: 0 6px 0 4px; flex: none;
+  }
+  #title {
+    font-weight: 600; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; max-width: 46vw; opacity: 0.95;
+  }
+  #spacer { flex: 1; }
+  button {
+    -webkit-app-region: no-drag;
+    border: 0; border-radius: 8px; background: transparent; color: #e9edef;
+    width: 34px; height: 28px; font-size: 14px; cursor: pointer;
+  }
+  button:hover { background: rgba(255,255,255,0.12); }
+  #close:hover { background: #e81123; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <div id="dot"></div>
+  <div id="title">Ruwa</div>
+  <div id="spacer"></div>
+  <button id="reload" title="Reload (Ctrl+R)">&#10227;</button>
+  <button id="settings" title="Settings">&#9881;</button>
+  <button id="min" title="Minimize">&#8211;</button>
+  <button id="max" title="Maximize">&#9723;</button>
+  <button id="close" title="Close">&#10005;</button>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  $('reload').onclick = () => window.ruwaBar.reload();
+  $('settings').onclick = () => window.ruwaBar.toggleSettings();
+  $('min').onclick = () => window.ruwaBar.minimize();
+  $('max').onclick = () => window.ruwaBar.maximizeToggle();
+  $('close').onclick = () => window.ruwaBar.close();
+  window.ruwaBar.onTitle((t) => {
+    $('title').textContent = t && t.trim() ? t : 'Ruwa';
+  });
+  window.ruwaBar.onMaximized((max) => {
+    $('max').innerHTML = max ? '&#10064;' : '&#9723;';
+    $('max').title = max ? 'Restore' : 'Maximize';
+  });
+  window.ruwaBar.ready();
+</script>
+</body>
+</html>

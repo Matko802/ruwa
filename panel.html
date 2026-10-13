@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="panel.css" />
+</head>
+<body>
+<header>
+  <strong>Ruwa Settings</strong>
+  <button id="close" title="Close panel">&#10005;</button>
+</header>
+<div id="status">Changes apply on next launch.</div>
+<main>
+  <section>
+    <h2>Behavior</h2>
+    <label class="row"><span>Keep running in tray when window closes</span><input type="checkbox" id="closeToTray" /></label>
+    <label class="row"><span>Start minimized to tray</span><input type="checkbox" id="startMinimized" /></label>
+    <label class="row"><span>Display backend</span>
+      <select id="display">
+        <option value="auto">Automatic (prefer Wayland)</option>
+        <option value="wayland">Wayland</option>
+        <option value="x11">X11 / XWayland</option>
+      </select>
+    </label>
+    <p class="hint">If calls or screen-share misbehave on Wayland, try “X11 / XWayland”.</p>
+  </section>
+  <section>
+    <h2>Voice &amp; video calls</h2>
+    <p class="hint">Ruwa runs real Chromium, so calls use the same engine as Chrome. Microphone, camera and notification access is granted automatically for WhatsApp origins. On Wayland, screen-share goes through xdg-desktop-portal + PipeWire.</p>
+  </section>
+  <section>
+    <h2>Custom CSS</h2>
+    <p class="hint">~/.config/ruwa/custom.css — reload the page to apply edits.</p>
+    <textarea id="css" spellcheck="false"></textarea>
+    <button id="saveCss" class="primary">Save custom CSS</button>
+  </section>
+  <section>
+    <h2>Premade mods</h2>
+    <p class="hint">Bundled mods. They run inside WhatsApp Web and take effect on next launch.</p>
+    <div id="mods"></div>
+  </section>
+  <section>
+    <h2>System</h2>
+    <label class="row"><span>Start on login</span><input type="checkbox" id="autostart" /></label>
+    <button id="logout" class="danger">Log out (clear site data)</button>
+    <p class="hint">Upgraded from Ruwa ≤ 0.4? Link your device again once — each engine keeps its own login.</p>
+  </section>
+</main>
+<script src="panel.js"></script>
+</body>
+</html>

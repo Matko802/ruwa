@@ -1,4 +1,4 @@
 /target
 /result*
+node_modules/
 /gen
-__pycache__/
