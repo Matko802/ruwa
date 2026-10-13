@@ -16,7 +16,6 @@ const {
 } = require('electron');
 
 const WHATSAPP_HOME = 'https://web.whatsapp.com/';
-const PANEL_W = 384;
 
 function chromeUA() {
   return (
@@ -385,22 +384,21 @@ function openExternal(url) {
 }
 
 function layout() {
-  if (!win || !mainView) return;
+  if (!win || !mainView || !panelView) return;
   const [w, h] = win.getContentSize();
-  const pw = panelOpen && panelView ? PANEL_W : 0;
-  mainView.setBounds({ x: 0, y: 0, width: Math.max(100, w - pw), height: Math.max(100, h) });
-  if (panelView) {
-    panelView.setBounds({ x: Math.max(0, w - pw), y: 0, width: pw, height: Math.max(0, h) });
+  if (panelOpen) {
+    mainView.setVisible(false);
+    panelView.setBounds({ x: 0, y: 0, width: w, height: h });
+    panelView.setVisible(true);
+  } else {
+    panelView.setVisible(false);
+    mainView.setBounds({ x: 0, y: 0, width: w, height: h });
+    mainView.setVisible(true);
   }
 }
 
 function setPanel(open) {
   panelOpen = open;
-  if (panelView) {
-    try {
-      panelView.setVisible(open);
-    } catch (_) {}
-  }
   layout();
   if (open && panelView) panelView.webContents.focus();
   else if (mainView) mainView.webContents.focus();
@@ -650,6 +648,7 @@ function registerIpc() {
     reloadMain();
     return true;
   });
+  ipcMain.handle('panel:get-version', () => app.getVersion());
   ipcMain.on('panel:close', () => setPanel(false));
 }
 

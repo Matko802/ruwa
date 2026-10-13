@@ -1,51 +1,71 @@
 html, body {
   margin: 0; padding: 0; height: 100%;
-  background: #0b141a; color: #e9edef;
-  font: 13px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #fafafa; color: #2e3436;
+  font: 14px/1.45 -apple-system, "Segoe UI", "Cantarell", Roboto, sans-serif;
 }
 header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px; background: #12171a;
-  position: sticky; top: 0;
+  padding: 10px 14px; background: #ebebeb;
+  border-bottom: 1px solid #d5d5d5;
 }
-header strong { font-size: 14px; }
+header strong { font-size: 15px; }
 #close {
-  border: 0; border-radius: 8px; background: transparent; color: #e9edef;
-  width: 32px; height: 28px; font-size: 13px; cursor: pointer;
+  border: 1px solid transparent; border-radius: 6px; background: transparent;
+  color: #2e3436; width: 34px; height: 30px; font-size: 13px; cursor: pointer;
 }
-#close:hover { background: rgba(255,255,255,0.12); }
+#close:hover { background: #dedede; }
+nav#tabs {
+  display: flex; gap: 2px; padding: 6px 10px 0; background: #ebebeb;
+  border-bottom: 1px solid #d5d5d5;
+}
+nav#tabs button {
+  border: 0; border-bottom: 3px solid transparent; background: transparent;
+  color: #2e3436; padding: 8px 14px; font-size: 14px; cursor: pointer;
+  border-radius: 6px 6px 0 0;
+}
+nav#tabs button:hover { background: #e2e2e2; }
+nav#tabs button.active {
+  border-bottom-color: #3584e4; font-weight: 600;
+}
 #status {
-  padding: 6px 12px; font-size: 12px; color: #8696a0;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 7px 14px; font-size: 12.5px; color: #5e5c64;
+  background: #f5f5f5; border-bottom: 1px solid #e4e4e4;
 }
-main { padding: 10px 12px 24px; overflow-y: auto; }
-section { margin-bottom: 18px; }
-h2 { font-size: 13px; margin: 0 0 8px; color: #25d366; }
+main { padding: 14px; overflow-y: auto; max-width: 640px; }
+.card {
+  background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;
+  padding: 12px; margin-bottom: 8px;
+}
+.card.caption { font-weight: bold; background: transparent; border: 0; padding: 6px 2px 2px; }
+.card p { margin: 6px 0; }
 .row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  background: rgba(255,255,255,0.06); border-radius: 10px;
-  padding: 9px 10px; margin-bottom: 8px;
+  background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 8px;
 }
-.hint { color: #8696a0; font-size: 12px; margin: 6px 0; }
+.hint { color: #5e5c64; font-size: 12.5px; margin: 6px 0 10px; }
 #css {
-  width: 100%; box-sizing: border-box; min-height: 150px;
-  font-family: monospace; font-size: 12px;
-  background: #12171a; color: #e9edef;
-  border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
-  padding: 8px; margin-bottom: 8px;
+  width: 100%; box-sizing: border-box; min-height: 220px;
+  font-family: monospace; font-size: 12.5px;
+  background: #ffffff; color: #2e3436;
+  border: 1px solid #d5d5d5; border-radius: 12px;
+  padding: 10px; margin-bottom: 8px;
 }
 button {
-  border: 0; border-radius: 999px; padding: 8px 14px;
-  background: rgba(255,255,255,0.12); color: #e9edef; cursor: pointer;
+  border: 1px solid #d5d5d5; border-radius: 8px; padding: 8px 16px;
+  background: #ffffff; color: #2e3436; cursor: pointer; font-size: 14px;
 }
-button.primary { background: #00a884; font-weight: 600; }
-button.danger { background: #e81123; font-weight: 600; width: 100%; }
-button:hover { filter: brightness(1.15); }
-.mod { margin-bottom: 8px; }
-.mod small { color: #8696a0; }
-.mod p { margin: 2px 0 0; color: #8696a0; font-size: 12px; }
+button:hover { background: #f0f0f0; }
+button.primary { background: #3584e4; border-color: #3584e4; color: #ffffff; font-weight: 600; }
+button.primary:hover { background: #2b74c9; }
+button.danger { background: #e01b24; border-color: #e01b24; color: #ffffff; font-weight: 600; width: 100%; }
+button.danger:hover { background: #c2161d; }
+.mod small { color: #5e5c64; }
+.mod p { margin: 2px 0 0; color: #5e5c64; font-size: 12.5px; }
 select {
-  background: #12171a; color: #e9edef;
-  border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 6px;
+  background: #ffffff; color: #2e3436;
+  border: 1px solid #d5d5d5; border-radius: 8px; padding: 7px; font-size: 14px;
 }
-input[type="checkbox"] { width: 18px; height: 18px; accent-color: #00a884; }
+input[type="checkbox"] { width: 18px; height: 18px; accent-color: #3584e4; }
+#closePanel { margin-top: 4px; }
+#version { color: #5e5c64; }

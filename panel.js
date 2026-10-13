@@ -13,6 +13,16 @@ function esc(s) {
 async function init() {
   $('close').onclick = () => api.close();
 
+  for (const tab of document.querySelectorAll('#tabs button')) {
+    tab.onclick = () => {
+      for (const t of document.querySelectorAll('#tabs button')) t.classList.remove('active');
+      tab.classList.add('active');
+      for (const page of document.querySelectorAll('main section')) {
+        page.hidden = page.dataset.page !== tab.dataset.tab;
+      }
+    };
+  }
+
   const cfg = await api.getConfig();
   $('closeToTray').checked = !!cfg.close_to_tray;
   $('startMinimized').checked = !!cfg.start_minimized;
@@ -88,6 +98,9 @@ async function init() {
       status(`Logout failed: ${e.message || e}`);
     }
   };
+
+  $('version').textContent = `Ruwa ${await api.getVersion()} — WhatsApp desktop client.`;
+  $('closePanel').onclick = () => api.close();
 }
 
 init().catch((e) => status(`Settings failed to load: ${e.message || e}`));

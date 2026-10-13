@@ -7,12 +7,19 @@
 <body>
 <header>
   <strong>Ruwa Settings</strong>
-  <button id="close" title="Close panel">&#10005;</button>
+  <button id="close" title="Close settings">&#10005;</button>
 </header>
+<nav id="tabs">
+  <button data-tab="general" class="active">General</button>
+  <button data-tab="calls">Calls</button>
+  <button data-tab="appearance">Appearance</button>
+  <button data-tab="mods">Mods</button>
+  <button data-tab="system">System</button>
+</nav>
 <div id="status">Changes apply on next launch.</div>
 <main>
-  <section>
-    <h2>Behavior</h2>
+  <section data-page="general">
+    <div class="card caption">Behavior</div>
     <label class="row"><span>Keep running in tray when window closes</span><input type="checkbox" id="closeToTray" /></label>
     <label class="row"><span>Start minimized to tray</span><input type="checkbox" id="startMinimized" /></label>
     <label class="row"><span>Display backend</span>
@@ -24,26 +31,34 @@
     </label>
     <p class="hint">If calls or screen-share misbehave on Wayland, try “X11 / XWayland”.</p>
   </section>
-  <section>
-    <h2>Voice &amp; video calls</h2>
-    <p class="hint">Ruwa runs real Chromium, so calls use the same engine as Chrome. Microphone, camera and notification access is granted automatically for WhatsApp origins. On Wayland, screen-share goes through xdg-desktop-portal + PipeWire.</p>
+  <section data-page="calls" hidden>
+    <div class="card caption">Voice &amp; video calls</div>
+    <div class="card">
+      <p>Ruwa runs real Chromium, so calls use the same engine as Chrome.</p>
+      <p>Microphone, camera and notification access is granted automatically for WhatsApp origins.</p>
+      <p>On Wayland, screen-share goes through xdg-desktop-portal + PipeWire — keep your portal backend running.</p>
+    </div>
   </section>
-  <section>
-    <h2>Custom CSS</h2>
+  <section data-page="appearance" hidden>
+    <div class="card caption">Custom CSS</div>
     <p class="hint">~/.config/ruwa/custom.css — reload the page to apply edits.</p>
     <textarea id="css" spellcheck="false"></textarea>
     <button id="saveCss" class="primary">Save custom CSS</button>
   </section>
-  <section>
-    <h2>Premade mods</h2>
+  <section data-page="mods" hidden>
+    <div class="card caption">Premade mods</div>
     <p class="hint">Bundled mods. They run inside WhatsApp Web and take effect on next launch.</p>
     <div id="mods"></div>
   </section>
-  <section>
-    <h2>System</h2>
+  <section data-page="system" hidden>
+    <div class="card caption">Startup</div>
     <label class="row"><span>Start on login</span><input type="checkbox" id="autostart" /></label>
+    <div class="card caption">Account</div>
     <button id="logout" class="danger">Log out (clear site data)</button>
     <p class="hint">Upgraded from Ruwa ≤ 0.4? Link your device again once — each engine keeps its own login.</p>
+    <div class="card caption">About</div>
+    <div class="card"><span id="version"></span></div>
+    <button id="closePanel">Close settings</button>
   </section>
 </main>
 <script src="panel.js"></script>

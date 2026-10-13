@@ -12,5 +12,6 @@ contextBridge.exposeInMainWorld('ruwaPanel', {
   getAutostart: () => ipcRenderer.invoke('panel:get-autostart'),
   setAutostart: (on) => ipcRenderer.invoke('panel:set-autostart', on),
   logout: () => ipcRenderer.invoke('panel:logout'),
+  getVersion: () => ipcRenderer.invoke('panel:get-version'),
   close: () => ipcRenderer.send('panel:close'),
 });
