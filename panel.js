@@ -13,15 +13,39 @@ function esc(s) {
 async function init() {
   $('close').onclick = () => api.close();
 
-  for (const tab of document.querySelectorAll('#tabs button')) {
-    tab.onclick = () => {
-      for (const t of document.querySelectorAll('#tabs button')) t.classList.remove('active');
-      tab.classList.add('active');
-      for (const page of document.querySelectorAll('main section')) {
-        page.hidden = page.dataset.page !== tab.dataset.tab;
-      }
-    };
+  const tabs = [...document.querySelectorAll('#tabs button')];
+  const pages = [...document.querySelectorAll('main section')];
+
+  function moveIndicator(animate = true) {
+    const active = document.querySelector('#tabs button.active');
+    const ind = document.getElementById('tab-indicator');
+    if (!active || !ind) return;
+    ind.style.transition = animate ? '' : 'none';
+    ind.style.transform = `translateX(${active.offsetLeft + 2}px)`;
+    ind.style.width = `${Math.max(24, active.offsetWidth - 4)}px`;
   }
+
+  function selectTab(tab, focus = false) {
+    for (const t of tabs) {
+      const on = t === tab;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    }
+    for (const page of pages) page.hidden = page.dataset.page !== tab.dataset.tab;
+    moveIndicator();
+    if (focus) tab.focus();
+  }
+
+  for (const tab of tabs) tab.onclick = () => selectTab(tab);
+  document.getElementById('tabs').onkeydown = (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const i = tabs.indexOf(document.activeElement);
+    const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+    selectTab(next || tabs[0], true);
+  };
+  window.addEventListener('resize', () => moveIndicator(false));
+  moveIndicator(false);
 
   const cfg = await api.getConfig();
   $('closeToTray').checked = !!cfg.close_to_tray;

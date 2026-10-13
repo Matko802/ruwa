@@ -9,12 +9,13 @@
   <strong>Ruwa Settings</strong>
   <button id="close" title="Close settings">&#10005;</button>
 </header>
-<nav id="tabs">
-  <button data-tab="general" class="active">General</button>
-  <button data-tab="calls">Calls</button>
-  <button data-tab="appearance">Appearance</button>
-  <button data-tab="mods">Mods</button>
-  <button data-tab="system">System</button>
+<nav id="tabs" role="tablist" aria-label="Settings sections">
+  <button role="tab" data-tab="general" class="active" aria-selected="true">General</button>
+  <button role="tab" data-tab="calls" aria-selected="false">Calls</button>
+  <button role="tab" data-tab="appearance" aria-selected="false">Appearance</button>
+  <button role="tab" data-tab="mods" aria-selected="false">Mods</button>
+  <button role="tab" data-tab="system" aria-selected="false">System</button>
+  <div id="tab-indicator"></div>
 </nav>
 <div id="status">Changes apply on next launch.</div>
 <main>
