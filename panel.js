@@ -101,6 +101,11 @@ async function init() {
 
   $('version').textContent = `Ruwa ${await api.getVersion()} — WhatsApp desktop client.`;
   $('closePanel').onclick = () => api.close();
+
+  const applyTheme = (t) =>
+    document.documentElement.classList.toggle('dark', !!(t && t.dark));
+  applyTheme(await api.getTheme());
+  api.onTheme(applyTheme);
 }
 
 init().catch((e) => status(`Settings failed to load: ${e.message || e}`));

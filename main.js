@@ -10,6 +10,7 @@ const {
   Tray,
   Menu,
   nativeImage,
+  nativeTheme,
   session,
   shell,
   ipcMain,
@@ -649,6 +650,14 @@ function registerIpc() {
     return true;
   });
   ipcMain.handle('panel:get-version', () => app.getVersion());
+  ipcMain.handle('panel:get-theme', () => ({ dark: nativeTheme.shouldUseDarkColors }));
+  nativeTheme.on('theme-updated', () => {
+    if (panelView) {
+      panelView.webContents
+        .send('panel:theme', { dark: nativeTheme.shouldUseDarkColors })
+        .catch(() => {});
+    }
+  });
   ipcMain.on('panel:close', () => setPanel(false));
 }
 
