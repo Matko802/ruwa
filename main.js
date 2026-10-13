@@ -747,7 +747,6 @@ function registerIpc() {
       panelView.webContents.send('panel:theme', themeState()).catch(() => {});
     }
   });
-  ipcMain.on('panel:close', () => setPanel(false));
 }
 
 function printUsage() {

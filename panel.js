@@ -11,8 +11,6 @@ function esc(s) {
 }
 
 async function init() {
-  $('close').onclick = () => api.close();
-
   const tabs = [...document.querySelectorAll('#tabs button')];
   const pages = [...document.querySelectorAll('main section')];
 
@@ -124,7 +122,6 @@ async function init() {
   };
 
   $('version').textContent = `Ruwa ${await api.getVersion()} — WhatsApp desktop client.`;
-  $('closePanel').onclick = () => api.close();
 
   const applyTheme = (t) => {
     const root = document.documentElement;

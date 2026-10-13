@@ -7,11 +7,9 @@
 <body>
 <header>
   <strong>Ruwa Settings</strong>
-  <button id="close" title="Close settings">&#10005;</button>
 </header>
 <nav id="tabs" role="tablist" aria-label="Settings sections">
   <button role="tab" data-tab="general" class="active" aria-selected="true">General</button>
-  <button role="tab" data-tab="calls" aria-selected="false">Calls</button>
   <button role="tab" data-tab="appearance" aria-selected="false">Appearance</button>
   <button role="tab" data-tab="mods" aria-selected="false">Mods</button>
   <button role="tab" data-tab="system" aria-selected="false">System</button>
@@ -32,14 +30,6 @@
     </label>
     <p class="hint">If calls or screen-share misbehave on Wayland, try “X11 / XWayland”.</p>
   </section>
-  <section data-page="calls" hidden>
-    <div class="card caption">Voice &amp; video calls</div>
-    <div class="card">
-      <p>Ruwa runs real Chromium, so calls use the same engine as Chrome.</p>
-      <p>Microphone, camera and notification access is granted automatically for WhatsApp origins.</p>
-      <p>On Wayland, screen-share goes through xdg-desktop-portal + PipeWire — keep your portal backend running.</p>
-    </div>
-  </section>
   <section data-page="appearance" hidden>
     <div class="card caption">Custom CSS</div>
     <p class="hint">~/.config/ruwa/custom.css — reload the page to apply edits.</p>
@@ -59,7 +49,6 @@
     <p class="hint">Upgraded from Ruwa ≤ 0.4? Link your device again once — each engine keeps its own login.</p>
     <div class="card caption">About</div>
     <div class="card"><span id="version"></span></div>
-    <button id="closePanel">Close settings</button>
   </section>
 </main>
 <script src="panel.js"></script>
