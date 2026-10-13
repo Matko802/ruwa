@@ -102,8 +102,15 @@ async function init() {
   $('version').textContent = `Ruwa ${await api.getVersion()} — WhatsApp desktop client.`;
   $('closePanel').onclick = () => api.close();
 
-  const applyTheme = (t) =>
-    document.documentElement.classList.toggle('dark', !!(t && t.dark));
+  const applyTheme = (t) => {
+    const root = document.documentElement;
+    root.classList.toggle('dark', !!(t && t.dark));
+    root.style.removeProperty('--primary');
+    root.style.removeProperty('--on-primary');
+    const c = (t && t.colors) || {};
+    if (c['--accent']) root.style.setProperty('--primary', c['--accent']);
+    if (c['--accent-fg']) root.style.setProperty('--on-primary', c['--accent-fg']);
+  };
   applyTheme(await api.getTheme());
   api.onTheme(applyTheme);
 }
