@@ -5,10 +5,12 @@ at https://web.whatsapp.com/ — real Chromium inside, so voice/video
 calls, screen-share and notifications work like Chrome. See
 `ATTRIBUTION.md`.
 
-One window, three views: a slim topbar (Reload, Settings, window
-controls), the WhatsApp page, and a settings side-panel (⚙ in the
-topbar or the tray menu). The tray menu has Show / Reload / Settings /
-Quit; clicking the tray icon shows the window.
+One window: the WhatsApp page with a native GTK topbar and menu
+(Ruwa → Reload / Settings / Quit, `Ctrl+R` to reload, `Ctrl+,` for
+Settings), plus a settings side-panel (menu, `Ctrl+,`, or the tray
+menu). The tray menu has Show / Reload / Settings /
+Quit; clicking the tray icon shows the window. The window title and
+tray tooltip mirror the page title, so unread counts show up there.
 
 Site styling is the Ruwa base plus your own tweaks: Settings has a
 Custom CSS editor writing `~/.config/ruwa/custom.css` (plain CSS).
@@ -51,7 +53,9 @@ for a syntax check. No npm dependencies — vanilla JS only.
 ## Notes
 
 - Voice/video calls need mic/camera permission (auto-granted for
-  WhatsApp origins). On Wayland, screen-share goes through
+  WhatsApp origins). Ruwa reports the bundled Chromium version as its
+  user agent, set before the window is created so page checks see
+  plain Chrome. On Wayland, screen-share goes through
   xdg-desktop-portal + PipeWire; set Display backend to “X11 /
   XWayland” in Settings (or `RUWA_BACKEND=x11`) if calls or
   screen-share misbehave.
@@ -61,8 +65,7 @@ for a syntax check. No npm dependencies — vanilla JS only.
 - Downloads land in `~/Downloads`.
 - The tray icon needs a StatusNotifier host (KDE natively, GNOME via
   the AppIndicator extension, or a Wayland bar with a tray). Without
-  one the app still works, minus the icon. The tooltip and topbar
-  mirror the page title, so unread counts show up there.
+  one the app still works, minus the icon.
 - Closing the window keeps the app in the tray by default (Settings →
   “Keep running in tray”); turn it off to quit on close.
   “Start minimized to tray” + “Start on login” gives login-to-tray.

@@ -16,10 +16,14 @@ const {
 } = require('electron');
 
 const WHATSAPP_HOME = 'https://web.whatsapp.com/';
-const TOPBAR_H = 40;
 const PANEL_W = 384;
-const CHROME_UA =
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36';
+
+function chromeUA() {
+  return (
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) ' +
+    `Chrome/${process.versions.chrome} Safari/537.36`
+  );
+}
 
 function verbose() {
   const v = process.env.RUWA_VERBOSE || process.env.RUWA_LOG || '';
@@ -354,7 +358,6 @@ function currentExe() {
 }
 
 let win = null;
-let topbarView = null;
 let mainView = null;
 let panelView = null;
 let tray = null;
@@ -382,13 +385,12 @@ function openExternal(url) {
 }
 
 function layout() {
-  if (!win || !topbarView || !mainView) return;
+  if (!win || !mainView) return;
   const [w, h] = win.getContentSize();
-  topbarView.setBounds({ x: 0, y: 0, width: w, height: TOPBAR_H });
   const pw = panelOpen && panelView ? PANEL_W : 0;
-  mainView.setBounds({ x: 0, y: TOPBAR_H, width: Math.max(100, w - pw), height: Math.max(100, h - TOPBAR_H) });
+  mainView.setBounds({ x: 0, y: 0, width: Math.max(100, w - pw), height: Math.max(100, h) });
   if (panelView) {
-    panelView.setBounds({ x: Math.max(0, w - pw), y: TOPBAR_H, width: pw, height: Math.max(0, h - TOPBAR_H) });
+    panelView.setBounds({ x: Math.max(0, w - pw), y: 0, width: pw, height: Math.max(0, h) });
   }
 }
 
@@ -414,14 +416,17 @@ function openSettings() {
 }
 
 function updateTitle(text) {
-  const tip = text && text.trim() ? `Ruwa — ${text}` : 'Ruwa';
+  const clean = text && text.trim() ? text : 'Ruwa';
+  const tip = clean === 'Ruwa' ? 'Ruwa' : `Ruwa — ${clean}`;
+  if (win) {
+    try {
+      win.setTitle(clean);
+    } catch (_) {}
+  }
   if (tray) {
     try {
       tray.setToolTip(tip);
     } catch (_) {}
-  }
-  if (topbarView) {
-    topbarView.webContents.send('bar:title', text || '').catch(() => {});
   }
 }
 
@@ -459,25 +464,40 @@ function userArgs(argv) {
 }
 
 function createWindow(startHidden) {
+  const ses = session.defaultSession;
+  ses.setUserAgent(chromeUA());
+  vlog(`user agent: ${chromeUA()}`);
+
   win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 800,
     minHeight: 600,
     title: 'Ruwa',
-    frame: false,
     show: false,
     backgroundColor: '#12171a',
   });
 
-  topbarView = new WebContentsView({
-    webPreferences: {
-      preload: path.join(appDir(), 'preload-topbar.js'),
-      contextIsolation: true,
-      sandbox: true,
-    },
-  });
-  topbarView.webContents.loadFile(path.join(appDir(), 'topbar.html'));
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      {
+        label: 'Ruwa',
+        submenu: [
+          { label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => reloadMain() },
+          { label: 'Settings', accelerator: 'CmdOrCtrl+,', click: () => togglePanel() },
+          { type: 'separator' },
+          {
+            label: 'Quit',
+            accelerator: 'CmdOrCtrl+Q',
+            click: () => {
+              quitting = true;
+              app.quit();
+            },
+          },
+        ],
+      },
+    ])
+  );
 
   mainView = new WebContentsView({
     webPreferences: {
@@ -486,7 +506,6 @@ function createWindow(startHidden) {
       backgroundThrottling: false,
     },
   });
-  mainView.webContents.loadURL(WHATSAPP_HOME);
 
   panelView = new WebContentsView({
     webPreferences: {
@@ -495,16 +514,15 @@ function createWindow(startHidden) {
       sandbox: true,
     },
   });
-  panelView.webContents.loadFile(path.join(appDir(), 'panel.html'));
 
   win.contentView.addChildView(mainView);
   win.contentView.addChildView(panelView);
-  win.contentView.addChildView(topbarView);
-  setPanel(false);
+  setPanel(process.env.RUWA_PANEL === '1');
 
-  const ses = session.defaultSession;
-  ses.setUserAgent(CHROME_UA);
-  ses.setPermissionRequestHandler((wc, permission, callback, details) => {
+  mainView.webContents.loadURL(WHATSAPP_HOME);
+  panelView.webContents.loadFile(path.join(appDir(), 'panel.html'));
+
+  ses.setPermissionRequestHandler((wc, permission, callback) => {
     const url = wc.getURL ? wc.getURL() : '';
     vlog(`permission '${permission}' from ${url}`);
     if (!navigationAllowed(url)) {
@@ -522,6 +540,8 @@ function createWindow(startHidden) {
         'fullscreen',
         'pointerLock',
         'keyboard-lock',
+        'persistent-storage',
+        'idle-detection',
       ].includes(permission)
     );
   });
@@ -567,9 +587,16 @@ function createWindow(startHidden) {
     updateTitle(title);
   });
 
+  for (const [label, wc] of [
+    ['main', mainView.webContents],
+    ['panel', panelView.webContents],
+  ]) {
+    wc.on('did-fail-load', (e, code, desc, url) => {
+      console.error(`ruwa: ${label} view failed to load ${url}: ${code} ${desc}`);
+    });
+  }
+
   win.on('resize', layout);
-  win.on('maximize', () => topbarView.webContents.send('bar:max', true).catch(() => {}));
-  win.on('unmaximize', () => topbarView.webContents.send('bar:max', false).catch(() => {}));
 
   win.on('close', (e) => {
     if (!quitting && cfg.close_to_tray) {
@@ -587,26 +614,6 @@ function createWindow(startHidden) {
 }
 
 function registerIpc() {
-  ipcMain.on('bar:reload', reloadMain);
-  ipcMain.on('bar:toggle-settings', togglePanel);
-  ipcMain.on('bar:min', () => win && win.minimize());
-  ipcMain.on('bar:maxtoggle', () => {
-    if (!win) return;
-    if (win.isMaximized()) win.unmaximize();
-    else win.maximize();
-  });
-  ipcMain.on('bar:close', () => {
-    if (!win) return;
-    if (cfg.close_to_tray) win.hide();
-    else {
-      quitting = true;
-      app.quit();
-    }
-  });
-  ipcMain.on('bar:ready', (e) => {
-    e.sender.send('bar:max', !!(win && win.isMaximized()));
-  });
-
   ipcMain.handle('panel:get-config', () => readConfig());
   ipcMain.handle('panel:set-config', (e, patch) => {
     cfg = writeConfig({ ...readConfig(), ...(patch || {}) });
