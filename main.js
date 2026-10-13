@@ -523,7 +523,9 @@ function updateTitle(text) {
     } catch (_) {}
   }
   if (topbarView) {
-    topbarView.webContents.send('bar:title', text || '').catch(() => {});
+    try {
+      topbarView.webContents.send('bar:title', text || '');
+    } catch (_) {}
   }
 }
 
@@ -773,7 +775,9 @@ function registerIpc() {
   ipcMain.handle('panel:get-theme', () => themeState());
   nativeTheme.on('theme-updated', () => {
     if (panelView) {
-      panelView.webContents.send('panel:theme', themeState()).catch(() => {});
+      try {
+        panelView.webContents.send('panel:theme', themeState());
+      } catch (_) {}
     }
   });
 }
