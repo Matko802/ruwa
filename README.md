@@ -17,7 +17,7 @@ Custom CSS editor writing `~/.config/ruwa/custom.css` (plain CSS).
 Reload to apply edits.
 
 Premade mods ship with Ruwa and run inside WhatsApp Web — toggle them
-in Settings (takes effect on next launch). Ships with **UAAA
+in Settings (applies immediately — the page reloads). Ships with **UAAA
 Decryptor**: messages containing `UAAA…` cipher blobs get inline
 Decrypt buttons, and an Encrypt button appears while you type in the
 chat box. Made for fun, not secure — see

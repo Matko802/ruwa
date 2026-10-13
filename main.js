@@ -687,7 +687,9 @@ function createWindow(startHidden) {
     if (css.trim()) {
       mainView.webContents.insertCSS(css).catch(() => {});
     }
-    const js = buildModsRegistry(cfg.mods_enabled);
+    const enabled = readConfig().mods_enabled;
+    vlog(`injecting ${enabled.length} mods into ${url}`);
+    const js = buildModsRegistry(enabled);
     mainView.webContents.executeJavaScript(js, true).catch(() => {});
   });
 
@@ -708,7 +710,7 @@ function createWindow(startHidden) {
   win.on('resize', layout);
 
   win.on('close', (e) => {
-    if (!quitting && cfg.close_to_tray) {
+    if (!quitting && readConfig().close_to_tray) {
       e.preventDefault();
       win.hide();
     }
@@ -759,6 +761,10 @@ function registerIpc() {
   });
   ipcMain.handle('panel:logout', async () => {
     await session.defaultSession.clearStorageData();
+    reloadMain();
+    return true;
+  });
+  ipcMain.handle('panel:reload-main', () => {
     reloadMain();
     return true;
   });

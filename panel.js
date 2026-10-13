@@ -52,23 +52,24 @@ async function init() {
   $('startMinimized').checked = !!cfg.start_minimized;
   $('display').value = cfg.display || 'auto';
 
-  const save = async (patch) => {
+  const save = async (patch, msg) => {
     try {
       await api.setConfig(patch);
-      status('Saved. Takes effect on next launch.');
+      status(msg || 'Saved.');
     } catch (e) {
       status(`Save failed: ${e.message || e}`);
     }
   };
   $('closeToTray').onchange = (e) => save({ close_to_tray: e.target.checked });
   $('startMinimized').onchange = (e) => save({ start_minimized: e.target.checked });
-  $('display').onchange = (e) => save({ display: e.target.value });
+  $('display').onchange = (e) => save({ display: e.target.value }, 'Saved. Restart Ruwa to apply.');
 
   $('css').value = await api.getCss();
   $('saveCss').onclick = async () => {
     try {
       await api.setCss($('css').value);
-      status('Custom CSS saved. Reload the page to apply.');
+      await api.reloadMain();
+      status('Custom CSS saved.');
     } catch (e) {
       status(`CSS not saved: ${e.message || e}`);
     }
@@ -95,7 +96,7 @@ async function init() {
       else on.delete(m.id);
       try {
         await api.setMods([...on]);
-        status(`Mod '${m.id}' ${cb.checked ? 'enabled' : 'disabled'}. Takes effect on next launch.`);
+        await api.reloadMain();
       } catch (e) {
         status(`Mod toggle failed: ${e.message || e}`);
       }
