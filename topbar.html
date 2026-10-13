@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fef7ff;
+    --on-surface: #1d1b20;
+    --on-surface-variant: #49454f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --surface: #141218;
+      --on-surface: #e6e0e9;
+      --on-surface-variant: #cac4d0;
+    }
+  }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: var(--surface); color: var(--on-surface);
+    font: 500 13px/1.4 Roboto, system-ui, "Segoe UI", sans-serif;
+    user-select: none; -webkit-user-select: none;
+  }
+  #bar {
+    display: flex; align-items: center; gap: 2px;
+    height: 40px; padding: 0 8px 0 12px;
+    -webkit-app-region: drag;
+  }
+  #dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #25d366; margin-right: 8px; flex: none;
+  }
+  #title {
+    white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; max-width: 52vw;
+    color: var(--on-surface-variant);
+  }
+  #spacer { flex: 1; }
+  button {
+    -webkit-app-region: no-drag;
+    border: 0; border-radius: 50%; background: transparent;
+    color: var(--on-surface-variant);
+    width: 32px; height: 32px; font-size: 15px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  button:hover { background: color-mix(in srgb, var(--on-surface) 8%, transparent); }
+</style>
+</head>
+<body>
+<div id="bar">
+  <div id="dot"></div>
+  <div id="title">Ruwa</div>
+  <div id="spacer"></div>
+  <button id="reload" title="Reload">&#10227;</button>
+  <button id="settings" title="Settings">&#9881;</button>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  $('reload').onclick = () => window.ruwaBar.reload();
+  $('settings').onclick = () => window.ruwaBar.toggleSettings();
+  window.ruwaBar.onTitle((t) => {
+    $('title').textContent = t && t.trim() ? t : 'Ruwa';
+  });
+</script>
+</body>
+</html>

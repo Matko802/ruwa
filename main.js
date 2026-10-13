@@ -17,6 +17,7 @@ const {
 } = require('electron');
 
 const WHATSAPP_HOME = 'https://web.whatsapp.com/';
+const TOPBAR_H = 40;
 
 function chromeUA() {
   return (
@@ -449,6 +450,7 @@ function currentExe() {
 }
 
 let win = null;
+let topbarView = null;
 let mainView = null;
 let panelView = null;
 let tray = null;
@@ -476,15 +478,17 @@ function openExternal(url) {
 }
 
 function layout() {
-  if (!win || !mainView || !panelView) return;
+  if (!win || !topbarView || !mainView || !panelView) return;
   const [w, h] = win.getContentSize();
+  topbarView.setBounds({ x: 0, y: 0, width: w, height: TOPBAR_H });
+  const bodyH = Math.max(100, h - TOPBAR_H);
   if (panelOpen) {
     mainView.setVisible(false);
-    panelView.setBounds({ x: 0, y: 0, width: w, height: h });
+    panelView.setBounds({ x: 0, y: TOPBAR_H, width: w, height: bodyH });
     panelView.setVisible(true);
   } else {
     panelView.setVisible(false);
-    mainView.setBounds({ x: 0, y: 0, width: w, height: h });
+    mainView.setBounds({ x: 0, y: TOPBAR_H, width: w, height: bodyH });
     mainView.setVisible(true);
   }
 }
@@ -517,6 +521,9 @@ function updateTitle(text) {
     try {
       tray.setToolTip(tip);
     } catch (_) {}
+  }
+  if (topbarView) {
+    topbarView.webContents.send('bar:title', text || '').catch(() => {});
   }
 }
 
@@ -564,6 +571,7 @@ function createWindow(startHidden) {
     minWidth: 800,
     minHeight: 600,
     title: 'Ruwa',
+    frame: false,
     show: false,
     backgroundColor: '#12171a',
   });
@@ -597,6 +605,14 @@ function createWindow(startHidden) {
     },
   });
 
+  topbarView = new WebContentsView({
+    webPreferences: {
+      preload: path.join(appDir(), 'preload-topbar.js'),
+      contextIsolation: true,
+      sandbox: true,
+    },
+  });
+
   panelView = new WebContentsView({
     webPreferences: {
       preload: path.join(appDir(), 'preload-panel.js'),
@@ -607,9 +623,11 @@ function createWindow(startHidden) {
 
   win.contentView.addChildView(mainView);
   win.contentView.addChildView(panelView);
+  win.contentView.addChildView(topbarView);
   setPanel(process.env.RUWA_PANEL === '1');
 
   mainView.webContents.loadURL(WHATSAPP_HOME);
+  topbarView.webContents.loadFile(path.join(appDir(), 'topbar.html'));
   panelView.webContents.loadFile(path.join(appDir(), 'panel.html'));
 
   ses.setPermissionRequestHandler((wc, permission, callback) => {
@@ -680,6 +698,7 @@ function createWindow(startHidden) {
   for (const [label, wc] of [
     ['main', mainView.webContents],
     ['panel', panelView.webContents],
+    ['topbar', topbarView.webContents],
   ]) {
     wc.on('did-fail-load', (e, code, desc, url) => {
       console.error(`ruwa: ${label} view failed to load ${url}: ${code} ${desc}`);
@@ -704,6 +723,9 @@ function createWindow(startHidden) {
 }
 
 function registerIpc() {
+  ipcMain.on('bar:reload', reloadMain);
+  ipcMain.on('bar:toggle-settings', togglePanel);
+
   ipcMain.handle('panel:get-config', () => readConfig());
   ipcMain.handle('panel:set-config', (e, patch) => {
     cfg = writeConfig({ ...readConfig(), ...(patch || {}) });
@@ -741,6 +763,7 @@ function registerIpc() {
     return true;
   });
   ipcMain.handle('panel:get-version', () => app.getVersion());
+  ipcMain.on('panel:close', () => setPanel(false));
   ipcMain.handle('panel:get-theme', () => themeState());
   nativeTheme.on('theme-updated', () => {
     if (panelView) {

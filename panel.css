@@ -52,6 +52,12 @@ header {
   padding: 8px 8px 8px 16px; background: var(--surface);
 }
 header strong { font-size: 20px; font-weight: 500; }
+#close {
+  border: 0; border-radius: 50%; background: transparent;
+  color: var(--on-surface-variant); width: 40px; height: 40px;
+  font-size: 14px; cursor: pointer;
+}
+#close:hover { background: color-mix(in srgb, var(--on-surface) 8%, transparent); }
 nav#tabs {
   position: relative;
   display: flex; gap: 0; padding: 0 4px;

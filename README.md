@@ -5,12 +5,12 @@ at https://web.whatsapp.com/ — real Chromium inside, so voice/video
 calls, screen-share and notifications work like Chrome. See
 `ATTRIBUTION.md`.
 
-One window: the WhatsApp page with a normal GTK topbar and menu
-(Ruwa → Reload / Settings / Quit, `Ctrl+R` to reload, `Ctrl+,` for
-Settings), plus fullscreen Settings (menu, `Ctrl+,`, or the tray
-menu — same way back). The tray menu has Show / Reload / Settings
-/ Quit; clicking the tray icon shows the window. The window title and
-tray tooltip mirror the page title, so unread counts show up there.
+One window, three views: a slim custom topbar (Reload, Settings,
+window controls), the WhatsApp page, and fullscreen Settings (topbar,
+menu, `Ctrl+,`, or the tray menu). The tray menu has Show / Reload /
+Settings / Quit; clicking the tray icon shows the window. The window
+title and tray tooltip mirror the page title, so unread counts show
+up there.
 
 Site styling is the Ruwa base plus your own tweaks: Settings has a
 Custom CSS editor writing `~/.config/ruwa/custom.css` (plain CSS).
