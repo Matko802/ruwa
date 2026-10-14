@@ -45,7 +45,7 @@ async function init() {
   window.addEventListener('resize', () => moveIndicator(false));
   moveIndicator(false);
 
-  let cfg = await api.getConfig();
+  const cfg = await api.getConfig();
   $('closeToTray').checked = !!cfg.close_to_tray;
   $('startMinimized').checked = !!cfg.start_minimized;
 
@@ -176,50 +176,6 @@ async function init() {
   };
 
   $('version').textContent = `Ruwa ${await api.getVersion()} — WhatsApp desktop client.`;
-
-  const ENG_FLAGS = [
-    'persistentCookies', 'gpuSameProcess', 'disableGpu', 'disableVsync',
-    'forceSoftwareRendering', 'singleProcess', 'processPerSite',
-    'animatedScrolling', 'backgroundOptimizations',
-    'disablePageAnimations', 'disablePinchZoom',
-  ];
-  const eng = cfg.engine || {};
-  for (const key of ENG_FLAGS) {
-    const el = document.getElementById(key);
-    if (el) el.checked = !!eng[key];
-  }
-  const engNum = (id, key) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.value = Number.isFinite(+eng[key]) && +eng[key] > 0 ? String(parseInt(eng[key], 10)) : '';
-    el.placeholder = '0';
-    el.onchange = () => saveEngine();
-  };
-  engNum('diskCacheMB', 'diskCacheMB');
-  engNum('jsMemoryMB', 'jsMemoryMB');
-  const saveEngine = async () => {
-    const patch = { engine: {} };
-    for (const key of ENG_FLAGS) {
-      const el = document.getElementById(key);
-      if (el) patch.engine[key] = el.checked;
-    }
-    for (const [id, key] of [['diskCacheMB', 'diskCacheMB'], ['jsMemoryMB', 'jsMemoryMB']]) {
-      const el = document.getElementById(id);
-      const n = el ? parseInt(el.value, 10) : NaN;
-      patch.engine[key] = Number.isFinite(n) && n > 0 ? Math.min(n, 65536) : 0;
-    }
-    try {
-      cfg = await api.setConfig(patch);
-      status('Engine options saved. Restart Ruwa to apply.');
-    } catch (e) {
-      status(`Save failed: ${e.message || e}`);
-    }
-  };
-  for (const key of ENG_FLAGS) {
-    const el = document.getElementById(key);
-    if (el) el.onchange = () => saveEngine();
-  }
-  $('restartApp').onclick = () => api.restart();
 
   const applyTheme = (t) =>
     document.documentElement.classList.toggle('dark', !!(t && t.dark));

@@ -12,7 +12,6 @@
   <button role="tab" data-tab="general" class="active" aria-selected="true">General</button>
   <button role="tab" data-tab="appearance" aria-selected="false">Appearance</button>
   <button role="tab" data-tab="mods" aria-selected="false">Mods</button>
-  <button role="tab" data-tab="engine" aria-selected="false">Engine</button>
   <button role="tab" data-tab="system" aria-selected="false">System</button>
   <div id="tab-indicator"></div>
 </nav>
@@ -44,28 +43,6 @@
     <div class="card caption">Premade mods</div>
     <p class="hint">Bundled mods. They run inside WhatsApp Web and take effect on next launch.</p>
     <div id="mods"></div>
-  </section>
-  <section data-page="engine" hidden>
-    <div class="card caption">Cache and Storage</div>
-    <div class="row"><span>Cache type</span><span class="value" id="cacheType">DiskHttpCache</span></div>
-    <div class="row"><span>Maximum cache size (MB, 0 = automatic)</span><input type="number" id="diskCacheMB" min="0" max="65536" step="64" /></div>
-    <label class="row"><span>Use persistent cookies</span><input type="checkbox" id="persistentCookies" /></label>
-    <div class="card caption">GPU and Rendering</div>
-    <label class="row"><span>Use GPU in the same process</span><input type="checkbox" id="gpuSameProcess" /></label>
-    <label class="row"><span>Disable GPU hardware acceleration</span><input type="checkbox" id="disableGpu" /></label>
-    <label class="row"><span>Disable GPU VSync</span><input type="checkbox" id="disableVsync" /></label>
-    <label class="row"><span>Force software rendering (experimental)</span><input type="checkbox" id="forceSoftwareRendering" /></label>
-    <div class="card caption">Processes and Memory</div>
-    <label class="row"><span>Run everything in a single process</span><input type="checkbox" id="singleProcess" /></label>
-    <label class="row"><span>Use one process per site</span><input type="checkbox" id="processPerSite" /></label>
-    <div class="row"><span>JavaScript memory limit (MB, 0 = automatic)</span><input type="number" id="jsMemoryMB" min="0" max="65536" step="256" /></div>
-    <div class="card caption">Web Behavior</div>
-    <label class="row"><span>Animated scrolling</span><input type="checkbox" id="animatedScrolling" /></label>
-    <label class="row"><span>Allow background optimizations</span><input type="checkbox" id="backgroundOptimizations" /></label>
-    <label class="row"><span>Disable page animations</span><input type="checkbox" id="disablePageAnimations" /></label>
-    <label class="row"><span>Disable pinch to zoom</span><input type="checkbox" id="disablePinchZoom" /></label>
-    <p class="hint">Engine options apply after restart.</p>
-    <button id="restartApp" class="primary">Restart Ruwa now</button>
   </section>
   <section data-page="system" hidden>
     <div class="card caption">Startup</div>

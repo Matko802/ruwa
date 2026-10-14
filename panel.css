@@ -126,20 +126,6 @@ input[type="checkbox"]:checked { background: var(--primary); border-color: var(-
 input[type="checkbox"]:checked::after {
   left: 20px; width: 24px; height: 24px; background: var(--on-primary);
 }
-.row .value {
-  color: var(--on-surface-variant); font-size: 13.5px;
-  background: var(--surface-container-highest);
-  border-radius: 8px; padding: 6px 12px;
-}
-input[type="number"] {
-  background: var(--surface-container-highest); color: var(--on-surface);
-  border: 0; border-bottom: 1px solid var(--outline-variant);
-  border-radius: 12px; padding: 10px 12px; font-size: 14px;
-  width: 110px; outline: none;
-  color-scheme: light dark;
-}
-input[type="number"]:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
 .m3-field {
   position: relative;
   display: flex; align-items: center; gap: 8px;

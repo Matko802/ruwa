@@ -17,7 +17,6 @@ const {
 } = require('electron');
 
 const WHATSAPP_HOME = 'https://web.whatsapp.com/';
-const TOPBAR_H = 40;
 
 function chromeUA() {
   return (
@@ -470,7 +469,6 @@ function currentExe() {
 }
 
 let win = null;
-let topbarView = null;
 let mainView = null;
 let panelView = null;
 let tray = null;
@@ -482,6 +480,58 @@ let quitting = false;
 function selectSession() {
   if (cfg.engine.persistentCookies) return session.defaultSession;
   return session.fromPartition('inmemory:ruwa', { cache: false });
+}
+
+function detectGpu() {
+  try {
+    const entries = fs.readdirSync('/dev/dri');
+    if (entries.some((n) => n.startsWith('renderD') || n.startsWith('card'))) return true;
+  } catch (_) {}
+  return false;
+}
+
+function runMarkerPath() {
+  return path.join(dataRoot(), 'electron', 'run.json');
+}
+
+function readRunMarker() {
+  try {
+    return JSON.parse(fs.readFileSync(runMarkerPath(), 'utf8'));
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeRunMarker(marker) {
+  try {
+    fs.mkdirSync(path.dirname(runMarkerPath()), { recursive: true });
+    fs.writeFileSync(runMarkerPath(), JSON.stringify(marker));
+  } catch (_) {}
+}
+
+function autoEngine(stored) {
+  const eng = sanitizeEngine(stored);
+  const hwPresent = detectGpu();
+  const last = readRunMarker();
+  const crashedWithGpu = !!(last && last.cleanExit === false && last.gpu);
+  let gpu = hwPresent;
+  if (crashedWithGpu) {
+    gpu = false;
+    vlog('previous run crashed with GPU enabled; falling back to software rendering');
+  }
+  eng.disableGpu = !gpu;
+  eng.forceSoftwareRendering = false;
+  eng.gpuSameProcess = false;
+  eng.singleProcess = false;
+  eng.processPerSite = true;
+  eng.jsMemoryMB = 0;
+  eng.diskCacheMB = 0;
+  eng.animatedScrolling = true;
+  eng.backgroundOptimizations = true;
+  eng.disablePageAnimations = false;
+  eng.disablePinchZoom = false;
+  vlog(`engine auto: gpu=${gpu} (dri=${hwPresent} lastCrash=${crashedWithGpu})`);
+  return { eng, gpu };
 }
 
 function applyEngineFlags(eng) {
@@ -546,17 +596,17 @@ function openExternal(url) {
 }
 
 function layout() {
-  if (!win || !topbarView || !mainView || !panelView) return;
+  if (!win || !mainView || !panelView) return;
   const [w, h] = win.getContentSize();
-  topbarView.setBounds({ x: 0, y: 0, width: w, height: TOPBAR_H });
-  const bodyH = Math.max(100, h - TOPBAR_H);
+  const W = Math.max(100, Math.floor(w));
+  const H = Math.max(100, Math.floor(h));
   if (panelOpen) {
     mainView.setVisible(false);
-    panelView.setBounds({ x: 0, y: TOPBAR_H, width: w, height: bodyH });
+    panelView.setBounds({ x: 0, y: 0, width: W, height: H });
     panelView.setVisible(true);
   } else {
     panelView.setVisible(false);
-    mainView.setBounds({ x: 0, y: TOPBAR_H, width: w, height: bodyH });
+    mainView.setBounds({ x: 0, y: 0, width: W, height: H });
     mainView.setVisible(true);
   }
 }
@@ -564,11 +614,6 @@ function layout() {
 function setPanel(open) {
   panelOpen = open;
   layout();
-  if (topbarView) {
-    try {
-      topbarView.webContents.send('bar:panel', open);
-    } catch (_) {}
-  }
   if (open && panelView) panelView.webContents.focus();
   else if (mainView) mainView.webContents.focus();
 }
@@ -638,9 +683,8 @@ function createWindow(startHidden) {
     minWidth: 800,
     minHeight: 600,
     title: 'Ruwa',
-    frame: false,
     show: false,
-    backgroundColor: '#12171a',
+    backgroundColor: '#1d1f1f',
   });
 
   Menu.setApplicationMenu(
@@ -673,15 +717,6 @@ function createWindow(startHidden) {
     },
   });
 
-  topbarView = new WebContentsView({
-    webPreferences: {
-      session: ses,
-      preload: path.join(appDir(), 'preload-topbar.js'),
-      contextIsolation: true,
-      sandbox: true,
-    },
-  });
-
   panelView = new WebContentsView({
     webPreferences: {
       session: ses,
@@ -693,11 +728,9 @@ function createWindow(startHidden) {
 
   win.contentView.addChildView(mainView);
   win.contentView.addChildView(panelView);
-  win.contentView.addChildView(topbarView);
   setPanel(process.env.RUWA_PANEL === '1');
 
   mainView.webContents.loadURL(WHATSAPP_HOME);
-  topbarView.webContents.loadFile(path.join(appDir(), 'topbar.html'));
   panelView.webContents.loadFile(path.join(appDir(), 'panel.html'));
 
   ses.setPermissionRequestHandler((wc, permission, callback) => {
@@ -771,7 +804,6 @@ function createWindow(startHidden) {
   for (const [label, wc] of [
     ['main', mainView.webContents],
     ['panel', panelView.webContents],
-    ['topbar', topbarView.webContents],
   ]) {
     wc.on('did-fail-load', (e, code, desc, url) => {
       console.error(`ruwa: ${label} view failed to load ${url}: ${code} ${desc}`);
@@ -796,9 +828,6 @@ function createWindow(startHidden) {
 }
 
 function registerIpc() {
-  ipcMain.on('bar:reload', reloadMain);
-  ipcMain.on('bar:toggle-settings', togglePanel);
-
   ipcMain.handle('panel:get-config', () => readConfig());
   ipcMain.handle('panel:set-config', (e, patch) => {
     cfg = writeConfig({ ...readConfig(), ...(patch || {}) });
@@ -834,10 +863,6 @@ function registerIpc() {
     await ses.clearStorageData();
     reloadMain();
     return true;
-  });
-  ipcMain.handle('panel:restart', () => {
-    app.relaunch();
-    app.quit();
   });
   ipcMain.handle('panel:reload-main', () => {
     reloadMain();
@@ -936,8 +961,14 @@ async function main() {
       `display=${cfg.display} mods=${JSON.stringify(cfg.mods_enabled)}`
   );
   applyDisplayBackend(cfg.display);
+  const auto = autoEngine(cfg.engine);
+  cfg.engine = auto.eng;
+  try {
+    writeConfig(cfg);
+  } catch (_) {}
   applyEngineFlags(cfg.engine);
-  vlog(`engine: ${JSON.stringify(cfg.engine)}`);
+  writeRunMarker({ cleanExit: false, gpu: auto.gpu, at: Date.now() });
+  app.on('before-quit', () => writeRunMarker({ cleanExit: true, gpu: auto.gpu, at: Date.now() }));
 
   await app.whenReady();
 

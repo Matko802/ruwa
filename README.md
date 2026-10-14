@@ -5,17 +5,18 @@ at https://web.whatsapp.com/ — real Chromium inside, so voice/video
 calls, screen-share and notifications work like Chrome. See
 `ATTRIBUTION.md`.
 
-One window, three views: a slim custom topbar (Reload, Settings,
-window controls), the WhatsApp page, and fullscreen Settings (topbar,
-menu, `Ctrl+,`, or the tray menu). The tray menu has Show / Reload /
-Settings / Quit; clicking the tray icon shows the window. The window
-title and tray tooltip mirror the page title, so unread counts show
-up there.
+One window with native OS decorations: the WhatsApp page plus
+fullscreen Settings (menu, `Ctrl+,`, or the tray menu). The tray menu
+has Show / Reload / Settings / Quit; clicking the tray icon shows the
+window. The window title and tray tooltip say Ruwa. Keyboard: `Ctrl+R`
+reloads, `Ctrl+,` opens Settings.
 
 Site styling is the Ruwa base plus your own tweaks: Settings
 has a Custom CSS editor writing `~/.config/ruwa/custom.css` (plain CSS).
-Reload to apply edits. The Engine tab exposes Chromium options
-(cache, GPU, processes, web behavior) — those need a restart.
+Reload to apply edits. The engine tunes itself: hardware rendering
+is used when a GPU is present, software fallback otherwise — and if a
+run ever crashes with the GPU on, the next launch disables it
+automatically.
 
 Premade mods ship with Ruwa and run inside WhatsApp Web — toggle them
 in Settings (applies immediately — the page reloads). Ships with **UAAA
