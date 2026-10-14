@@ -21,14 +21,17 @@
     <div class="card caption">Behavior</div>
     <label class="row"><span>Keep running in tray when window closes</span><input type="checkbox" id="closeToTray" /></label>
     <label class="row"><span>Start minimized to tray</span><input type="checkbox" id="startMinimized" /></label>
-    <label class="row"><span>Display backend</span>
-      <select id="display">
-        <option value="auto">Automatic (prefer Wayland)</option>
-        <option value="wayland">Wayland</option>
-        <option value="x11">X11 / XWayland</option>
-      </select>
-    </label>
-    <p class="hint">If calls or screen-share misbehave on Wayland, try “X11 / XWayland”.</p>
+    <div class="row"><span>Display backend</span>
+      <div class="m3-field" id="displayField" role="listbox" tabindex="0" aria-label="Display backend" aria-expanded="false">
+        <span id="displayValue"></span>
+        <svg class="trail" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        <div class="m3-menu" id="displayMenu" hidden>
+          <button role="option" data-value="auto"><svg viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Automatic (prefer Wayland)</span></button>
+          <button role="option" data-value="wayland"><svg viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Wayland</span></button>
+          <button role="option" data-value="x11"><svg viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>X11 / XWayland</span></button>
+        </div>
+      </div>
+    </div>
   </section>
   <section data-page="appearance" hidden>
     <div class="card caption">Custom CSS</div>

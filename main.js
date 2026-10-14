@@ -343,95 +343,8 @@ function autostartPath() {
   return path.join(base, 'autostart', 'ruwa.desktop');
 }
 
-const COLOR_VALUE = /^(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\))$/;
-
-function gtkThemeName() {
-  try {
-    const { execFileSync } = require('child_process');
-    const out = String(execFileSync('gsettings', ['get', 'org.gnome.desktop.interface', 'gtk-theme'], { timeout: 3000 }));
-    const m = out.match(/'([^']+)'/);
-    if (m) return m[1];
-  } catch (_) {}
-  try {
-    const ini = fs.readFileSync(path.join(homeDir(), '.config', 'gtk-4.0', 'settings.ini'), 'utf8');
-    const m = ini.match(/^gtk-theme-name\s*=\s*(.+)$/m);
-    if (m) return m[1].trim();
-  } catch (_) {}
-  try {
-    const ini = fs.readFileSync(path.join(homeDir(), '.config', 'gtk-3.0', 'settings.ini'), 'utf8');
-    const m = ini.match(/^gtk-theme-name\s*=\s*(.+)$/m);
-    if (m) return m[1].trim();
-  } catch (_) {}
-  return 'Adwaita';
-}
-
-function parseDefineColors(css) {
-  const map = {};
-  const re = /@define-color\s+([a-zA-Z0-9_-]+)\s+([^;]+);/g;
-  let m;
-  while ((m = re.exec(css))) {
-    const v = m[2].trim();
-    if (COLOR_VALUE.test(v)) map[m[1]] = v;
-  }
-  return map;
-}
-
-function readThemeFile(name, file) {
-  const bases = [
-    path.join(homeDir(), '.themes'),
-    path.join(homeDir(), '.local', 'share', 'themes'),
-    ...String(process.env.XDG_DATA_DIRS || '/usr/local/share:/usr/share')
-      .split(':')
-      .filter(Boolean)
-      .map((d) => path.join(d, 'themes')),
-  ];
-  for (const base of bases) {
-    try {
-      return fs.readFileSync(path.join(base, name, 'gtk-4.0', file), 'utf8');
-    } catch (_) {}
-  }
-  return null;
-}
-
-const THEME_VARS = {
-  '--bg': ['window_bg_color', 'view_bg_color'],
-  '--header-bg': ['headerbar_bg_color', 'window_bg_color'],
-  '--border': ['borders'],
-  '--card': ['card_bg_color', 'view_bg_color'],
-  '--card-border': ['borders'],
-  '--fg': ['window_fg_color', 'view_fg_color'],
-  '--accent': ['accent_bg_color'],
-  '--accent-fg': ['accent_fg_color'],
-  '--danger': ['destructive_bg_color'],
-  '--input-border': ['borders'],
-};
-
-function gtkPaletteColors() {
-  const name = gtkThemeName();
-  const dark = nativeTheme.shouldUseDarkColors;
-  let defs = {};
-  const main = readThemeFile(name, 'gtk.css');
-  if (main) defs = { ...defs, ...parseDefineColors(main) };
-  if (dark) {
-    const darkCss = readThemeFile(name, 'gtk-dark.css');
-    if (darkCss) defs = { ...defs, ...parseDefineColors(darkCss) };
-  }
-  const colors = {};
-  for (const [v, names] of Object.entries(THEME_VARS)) {
-    for (const n of names) {
-      if (defs[n]) {
-        colors[v] = defs[n];
-        break;
-      }
-    }
-  }
-  if (Object.keys(colors).length) vlog(`gtk theme '${name}'${dark ? ' (dark)' : ''}: ${JSON.stringify(colors)}`);
-  else vlog(`gtk theme '${name}': no parsable colors, using built-in palette`);
-  return colors;
-}
-
 function themeState() {
-  return { dark: nativeTheme.shouldUseDarkColors, colors: gtkPaletteColors() };
+  return { dark: nativeTheme.shouldUseDarkColors };
 }
 
 function desktopEntry(exec, minimized) {
@@ -496,6 +409,11 @@ function layout() {
 function setPanel(open) {
   panelOpen = open;
   layout();
+  if (topbarView) {
+    try {
+      topbarView.webContents.send('bar:panel', open);
+    } catch (_) {}
+  }
   if (open && panelView) panelView.webContents.focus();
   else if (mainView) mainView.webContents.focus();
 }

@@ -8,13 +8,15 @@
     --surface: #fef7ff;
     --on-surface: #1d1b20;
     --on-surface-variant: #49454f;
+    --divider: #e0e0e0;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       color-scheme: dark;
-      --surface: #141218;
-      --on-surface: #e6e0e9;
-      --on-surface-variant: #cac4d0;
+      --surface: #161717;
+      --on-surface: #e2e7e3;
+      --on-surface-variant: #a8b3a8;
+      --divider: #1d1f1f;
     }
   }
   html, body {
@@ -26,8 +28,11 @@
   #bar {
     display: flex; align-items: center; gap: 2px;
     height: 40px; padding: 0 8px 0 12px;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--divider, transparent);
     -webkit-app-region: drag;
   }
+  body.panel-open #bar { border-bottom-color: transparent; }
   #dot {
     width: 12px; height: 12px; border-radius: 50%;
     background: #25d366; margin-right: 8px; flex: none;
@@ -67,6 +72,9 @@
   $('settings').onclick = () => window.ruwaBar.toggleSettings();
   window.ruwaBar.onTitle((t) => {
     $('title').textContent = t && t.trim() ? t : 'Ruwa';
+  });
+  window.ruwaBar.onPanel((open) => {
+    document.body.classList.toggle('panel-open', !!open);
   });
 </script>
 </body>

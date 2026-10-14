@@ -48,7 +48,6 @@ async function init() {
   const cfg = await api.getConfig();
   $('closeToTray').checked = !!cfg.close_to_tray;
   $('startMinimized').checked = !!cfg.start_minimized;
-  $('display').value = cfg.display || 'auto';
 
   const save = async (patch, msg) => {
     try {
@@ -60,7 +59,61 @@ async function init() {
   };
   $('closeToTray').onchange = (e) => save({ close_to_tray: e.target.checked });
   $('startMinimized').onchange = (e) => save({ start_minimized: e.target.checked });
-  $('display').onchange = (e) => save({ display: e.target.value }, 'Saved. Restart Ruwa to apply.');
+
+  const DISPLAY_LABELS = { auto: 'Automatic (prefer Wayland)', wayland: 'Wayland', x11: 'X11 / XWayland' };
+  const field = $('displayField');
+  const menu = $('displayMenu');
+  const valueEl = $('displayValue');
+  const optionBtns = [...menu.querySelectorAll('button')];
+
+  function paintDisplay(v) {
+    valueEl.textContent = DISPLAY_LABELS[v] || DISPLAY_LABELS.auto;
+    for (const b of optionBtns) b.setAttribute('aria-checked', b.dataset.value === v ? 'true' : 'false');
+  }
+
+  function closeDisplayMenu(focusField = false) {
+    menu.hidden = true;
+    field.setAttribute('aria-expanded', 'false');
+    if (focusField) field.focus();
+  }
+
+  paintDisplay(cfg.display || 'auto');
+  field.onclick = (e) => {
+    e.stopPropagation();
+    const open = menu.hidden;
+    menu.hidden = !open;
+    field.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  field.onkeydown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      field.click();
+    } else if (e.key === 'Escape') {
+      closeDisplayMenu(true);
+    } else if (e.key === 'ArrowDown' && menu.hidden) {
+      e.preventDefault();
+      menu.hidden = false;
+      field.setAttribute('aria-expanded', 'true');
+      optionBtns[0].focus();
+    }
+  };
+  document.addEventListener('click', (e) => {
+    if (!menu.hidden && !field.contains(e.target)) closeDisplayMenu();
+  });
+  for (const b of optionBtns) {
+    b.onclick = async (e) => {
+      e.stopPropagation();
+      closeDisplayMenu();
+      paintDisplay(b.dataset.value);
+      await save({ display: b.dataset.value }, 'Saved. Restart Ruwa to apply.');
+    };
+    b.onkeydown = (e) => {
+      const i = optionBtns.indexOf(b);
+      if (e.key === 'Escape') closeDisplayMenu(true);
+      else if (e.key === 'ArrowDown') { e.preventDefault(); (optionBtns[i + 1] || optionBtns[0]).focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); (optionBtns[i - 1] || optionBtns[optionBtns.length - 1]).focus(); }
+    };
+  }
 
   $('css').value = await api.getCss();
   $('saveCss').onclick = async () => {
@@ -124,15 +177,8 @@ async function init() {
 
   $('version').textContent = `Ruwa ${await api.getVersion()} — WhatsApp desktop client.`;
 
-  const applyTheme = (t) => {
-    const root = document.documentElement;
-    root.classList.toggle('dark', !!(t && t.dark));
-    root.style.removeProperty('--primary');
-    root.style.removeProperty('--on-primary');
-    const c = (t && t.colors) || {};
-    if (c['--accent']) root.style.setProperty('--primary', c['--accent']);
-    if (c['--accent-fg']) root.style.setProperty('--on-primary', c['--accent-fg']);
-  };
+  const applyTheme = (t) =>
+    document.documentElement.classList.toggle('dark', !!(t && t.dark));
   applyTheme(await api.getTheme());
   api.onTheme(applyTheme);
 }
