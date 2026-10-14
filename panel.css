@@ -47,6 +47,8 @@ html, body {
   background: var(--surface); color: var(--on-surface);
   font: 14px/1.45 Roboto, system-ui, "Segoe UI", "Cantarell", sans-serif;
 }
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px 8px 8px 16px; background: var(--surface);

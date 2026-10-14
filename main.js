@@ -337,6 +337,62 @@ function buildModsRegistry(enabled) {
   return `var RUWA_MOD_IDS=${JSON.stringify(ids)};\nvar RUWA_MODS={\n${chunks.join(',\n')}\n};${boot}`;
 }
 
+const REBRAND_JS = `(function(){
+if (window.__ruwaRebrand) return;
+window.__ruwaRebrand = true;
+var seen = new WeakSet();
+var queued = false;
+function rename(node) {
+  try {
+    if (!node.nodeValue || seen.has(node)) return;
+    var p = node.parentNode;
+    if (!p || !document.body.contains(node)) return;
+    var tag = p.tagName;
+    if (p.isContentEditable || tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'NOSCRIPT') return;
+    if (p.closest && p.closest('.uaaa-message-ui')) return;
+    var v = node.nodeValue;
+    if (v.indexOf('WhatsApp') === -1 && v.indexOf('whatsapp') === -1 && v.indexOf('WHATSAPP') === -1) { seen.add(node); return; }
+    var nv = v.replace(/WHATSAPP/g, 'RUWA').replace(/WhatsApp/g, 'Ruwa').replace(/whatsapp/g, 'ruwa');
+    if (nv !== v) node.nodeValue = nv;
+    seen.add(node);
+  } catch (e) { console.warn('[ruwa] rebrand skipped:', e && e.message); }
+}
+function sweep(root) {
+  try {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var batch = [], n, count = 0;
+    while ((n = walker.nextNode())) batch.push(n);
+    for (var i = 0; i < batch.length && count < 600; i++) { rename(batch[i]); count++; }
+  } catch (e) { console.warn('[ruwa] rebrand sweep skipped:', e && e.message); }
+}
+function schedule() {
+  if (queued) return;
+  queued = true;
+  (window.requestAnimationFrame || function (f) { setTimeout(f, 100); })(function () {
+    queued = false;
+    try { sweep(document.body); } catch (e) {}
+  });
+}
+try {
+  sweep(document.body);
+  new MutationObserver(function (muts) {
+    try {
+      for (var i = 0; i < muts.length; i++) {
+        var m = muts[i];
+        if (m.type === 'characterData') { seen.delete(m.target); rename(m.target); }
+        else if (m.type === 'childList') {
+          for (var j = 0; j < m.addedNodes.length; j++) {
+            var a = m.addedNodes[j];
+            if (a.nodeType === 3) { seen.delete(a); rename(a); }
+          }
+          schedule();
+        }
+      }
+    } catch (e) {}
+  }).observe(document.body, { childList: true, subtree: true, characterData: true });
+} catch (e) { console.warn('[ruwa] rebrand off:', e && e.message); }
+})();`;
+
 function autostartPath() {
   const x = process.env.XDG_CONFIG_HOME;
   const base = x && x.trim() ? x : path.join(homeDir(), '.config');
@@ -427,22 +483,15 @@ function openSettings() {
   togglePanel();
 }
 
-function updateTitle(text) {
-  const clean = text && text.trim() ? text : 'Ruwa';
-  const tip = clean === 'Ruwa' ? 'Ruwa' : `Ruwa — ${clean}`;
+function updateTitle() {
   if (win) {
     try {
-      win.setTitle(clean);
+      win.setTitle('Ruwa');
     } catch (_) {}
   }
   if (tray) {
     try {
-      tray.setToolTip(tip);
-    } catch (_) {}
-  }
-  if (topbarView) {
-    try {
-      topbarView.webContents.send('bar:title', text || '');
+      tray.setToolTip('Ruwa');
     } catch (_) {}
   }
 }
@@ -611,10 +660,11 @@ function createWindow(startHidden) {
     vlog(`injecting ${enabled.length} mods into ${url}`);
     const js = buildModsRegistry(enabled);
     mainView.webContents.executeJavaScript(js, true).catch(() => {});
+    mainView.webContents.executeJavaScript(REBRAND_JS, true).catch(() => {});
   });
 
-  mainView.webContents.on('page-title-updated', (e, title) => {
-    updateTitle(title);
+  mainView.webContents.on('page-title-updated', () => {
+    updateTitle();
   });
 
   for (const [label, wc] of [
