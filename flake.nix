@@ -30,7 +30,7 @@
             runHook preInstall
             mkdir -p $out/share/ruwa/app $out/share/ruwa/mods $out/share/applications
             cp $src/package.json $src/main.js $src/preload-panel.js \
-               $src/panel.html $src/panel.css $src/panel.js \
+               $src/topbar.html $src/panel.html $src/panel.css $src/panel.js \
                $out/share/ruwa/app/
             cp $src/assets/base.css $out/share/ruwa/app/base.css
             cp $src/data/icons/ruwa.png $out/share/ruwa/app/icon.png

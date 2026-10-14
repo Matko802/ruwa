@@ -17,6 +17,7 @@ const {
 } = require('electron');
 
 const WHATSAPP_HOME = 'https://web.whatsapp.com/';
+const TOPBAR_H = 40;
 
 function chromeUA() {
   return (
@@ -469,6 +470,7 @@ function currentExe() {
 }
 
 let win = null;
+let topbarView = null;
 let mainView = null;
 let panelView = null;
 let tray = null;
@@ -596,17 +598,18 @@ function openExternal(url) {
 }
 
 function layout() {
-  if (!win || !mainView || !panelView) return;
+  if (!win || !topbarView || !mainView || !panelView) return;
   const [w, h] = win.getContentSize();
   const W = Math.max(100, Math.floor(w));
-  const H = Math.max(100, Math.floor(h));
+  topbarView.setBounds({ x: 0, y: 0, width: W, height: TOPBAR_H });
+  const bodyH = Math.max(100, Math.floor(h) - TOPBAR_H);
   if (panelOpen) {
     mainView.setVisible(false);
-    panelView.setBounds({ x: 0, y: 0, width: W, height: H });
+    panelView.setBounds({ x: 0, y: TOPBAR_H, width: W, height: bodyH });
     panelView.setVisible(true);
   } else {
     panelView.setVisible(false);
-    mainView.setBounds({ x: 0, y: 0, width: W, height: H });
+    mainView.setBounds({ x: 0, y: TOPBAR_H, width: W, height: bodyH });
     mainView.setVisible(true);
   }
 }
@@ -683,6 +686,7 @@ function createWindow(startHidden) {
     minWidth: 800,
     minHeight: 600,
     title: 'Ruwa',
+    frame: false,
     show: false,
     backgroundColor: '#1d1f1f',
   });
@@ -717,6 +721,14 @@ function createWindow(startHidden) {
     },
   });
 
+  topbarView = new WebContentsView({
+    webPreferences: {
+      session: ses,
+      contextIsolation: true,
+      sandbox: true,
+    },
+  });
+
   panelView = new WebContentsView({
     webPreferences: {
       session: ses,
@@ -728,9 +740,11 @@ function createWindow(startHidden) {
 
   win.contentView.addChildView(mainView);
   win.contentView.addChildView(panelView);
+  win.contentView.addChildView(topbarView);
   setPanel(process.env.RUWA_PANEL === '1');
 
   mainView.webContents.loadURL(WHATSAPP_HOME);
+  topbarView.webContents.loadFile(path.join(appDir(), 'topbar.html'));
   panelView.webContents.loadFile(path.join(appDir(), 'panel.html'));
 
   ses.setPermissionRequestHandler((wc, permission, callback) => {
@@ -804,6 +818,7 @@ function createWindow(startHidden) {
   for (const [label, wc] of [
     ['main', mainView.webContents],
     ['panel', panelView.webContents],
+    ['topbar', topbarView.webContents],
   ]) {
     wc.on('did-fail-load', (e, code, desc, url) => {
       console.error(`ruwa: ${label} view failed to load ${url}: ${code} ${desc}`);

@@ -5,11 +5,12 @@ at https://web.whatsapp.com/ — real Chromium inside, so voice/video
 calls, screen-share and notifications work like Chrome. See
 `ATTRIBUTION.md`.
 
-One window with native OS decorations: the WhatsApp page plus
-fullscreen Settings (menu, `Ctrl+,`, or the tray menu). The tray menu
-has Show / Reload / Settings / Quit; clicking the tray icon shows the
-window. The window title and tray tooltip say Ruwa. Keyboard: `Ctrl+R`
-reloads, `Ctrl+,` opens Settings.
+One window with a slim custom topbar shell (empty by design —
+style it yourself: it is just `#bar`, 40px tall, draggable), the
+WhatsApp page, and fullscreen Settings (menu, `Ctrl+,`, or the tray
+menu). The tray menu has Show / Reload / Settings / Quit; clicking
+the tray icon shows the window. Keyboard: `Ctrl+R` reloads, `Ctrl+,`
+opens Settings.
 
 Site styling is the Ruwa base plus your own tweaks: Settings
 has a Custom CSS editor writing `~/.config/ruwa/custom.css` (plain CSS).
