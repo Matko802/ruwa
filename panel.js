@@ -11,8 +11,6 @@ function esc(s) {
 }
 
 async function init() {
-  $('close').onclick = () => api.close();
-
   const tabs = [...document.querySelectorAll('#tabs button')];
   const pages = [...document.querySelectorAll('main section')];
 

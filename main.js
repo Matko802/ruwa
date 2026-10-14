@@ -771,7 +771,6 @@ function registerIpc() {
     return true;
   });
   ipcMain.handle('panel:get-version', () => app.getVersion());
-  ipcMain.on('panel:close', () => setPanel(false));
   ipcMain.handle('panel:get-theme', () => themeState());
   nativeTheme.on('theme-updated', () => {
     if (panelView) {
