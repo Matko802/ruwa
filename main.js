@@ -617,6 +617,11 @@ function layout() {
 function setPanel(open) {
   panelOpen = open;
   layout();
+  if (topbarView) {
+    try {
+      topbarView.webContents.send('bar:panel', open);
+    } catch (_) {}
+  }
   if (open && panelView) panelView.webContents.focus();
   else if (mainView) mainView.webContents.focus();
 }
@@ -630,7 +635,7 @@ function openSettings() {
   togglePanel();
 }
 
-function updateTitle() {
+function updateTitle(text) {
   if (win) {
     try {
       win.setTitle('Ruwa');
@@ -639,6 +644,11 @@ function updateTitle() {
   if (tray) {
     try {
       tray.setToolTip('Ruwa');
+    } catch (_) {}
+  }
+  if (topbarView) {
+    try {
+      topbarView.webContents.send('bar:title', text || '');
     } catch (_) {}
   }
 }
@@ -724,6 +734,7 @@ function createWindow(startHidden) {
   topbarView = new WebContentsView({
     webPreferences: {
       session: ses,
+      preload: path.join(appDir(), 'preload-topbar.js'),
       contextIsolation: true,
       sandbox: true,
     },
@@ -811,8 +822,8 @@ function createWindow(startHidden) {
     mainView.webContents.executeJavaScript(REBRAND_JS, true).catch(() => {});
   });
 
-  mainView.webContents.on('page-title-updated', () => {
-    updateTitle();
+  mainView.webContents.on('page-title-updated', (e, title) => {
+    updateTitle(title);
   });
 
   for (const [label, wc] of [
@@ -843,6 +854,9 @@ function createWindow(startHidden) {
 }
 
 function registerIpc() {
+  ipcMain.on('bar:reload', reloadMain);
+  ipcMain.on('bar:toggle-settings', togglePanel);
+
   ipcMain.handle('panel:get-config', () => readConfig());
   ipcMain.handle('panel:set-config', (e, patch) => {
     cfg = writeConfig({ ...readConfig(), ...(patch || {}) });

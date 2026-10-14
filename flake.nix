@@ -29,7 +29,7 @@
           installPhase = ''
             runHook preInstall
             mkdir -p $out/share/ruwa/app $out/share/ruwa/mods $out/share/applications
-            cp $src/package.json $src/main.js $src/preload-panel.js \
+            cp $src/package.json $src/main.js $src/preload-topbar.js $src/preload-panel.js \
                $src/topbar.html $src/panel.html $src/panel.css $src/panel.js \
                $out/share/ruwa/app/
             cp $src/assets/base.css $out/share/ruwa/app/base.css
