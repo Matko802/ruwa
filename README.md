@@ -12,9 +12,10 @@ Settings / Quit; clicking the tray icon shows the window. The window
 title and tray tooltip mirror the page title, so unread counts show
 up there.
 
-Site styling is the Ruwa base plus your own tweaks: Settings has a
-Custom CSS editor writing `~/.config/ruwa/custom.css` (plain CSS).
-Reload to apply edits.
+Site styling is the Ruwa base plus your own tweaks: Settings
+has a Custom CSS editor writing `~/.config/ruwa/custom.css` (plain CSS).
+Reload to apply edits. The Engine tab exposes Chromium options
+(cache, GPU, processes, web behavior) — those need a restart.
 
 Premade mods ship with Ruwa and run inside WhatsApp Web — toggle them
 in Settings (applies immediately — the page reloads). Ships with **UAAA

@@ -90,7 +90,56 @@ function sanitizeModIds(ids) {
 }
 
 function defaultConfig() {
-  return { close_to_tray: true, start_minimized: false, display: 'auto', mods_enabled: [] };
+  return {
+    close_to_tray: true,
+    start_minimized: false,
+    display: 'auto',
+    mods_enabled: [],
+    engine: defaultEngine(),
+  };
+}
+
+function defaultEngine() {
+  return {
+    diskCacheMB: 0,
+    persistentCookies: true,
+    gpuSameProcess: true,
+    disableGpu: false,
+    disableVsync: false,
+    forceSoftwareRendering: false,
+    singleProcess: false,
+    processPerSite: true,
+    jsMemoryMB: 0,
+    animatedScrolling: true,
+    backgroundOptimizations: true,
+    disablePageAnimations: false,
+    disablePinchZoom: false,
+  };
+}
+
+function sanitizeEngine(raw) {
+  const d = defaultEngine();
+  if (!raw || typeof raw !== 'object') return d;
+  const num = (v) => {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) && n >= 0 ? Math.min(n, 65536) : 0;
+  };
+  const flag = (v, fb) => (typeof v === 'boolean' ? v : fb);
+  return {
+    diskCacheMB: num(raw.diskCacheMB),
+    persistentCookies: flag(raw.persistentCookies, d.persistentCookies),
+    gpuSameProcess: flag(raw.gpuSameProcess, d.gpuSameProcess),
+    disableGpu: flag(raw.disableGpu, d.disableGpu),
+    disableVsync: flag(raw.disableVsync, d.disableVsync),
+    forceSoftwareRendering: flag(raw.forceSoftwareRendering, d.forceSoftwareRendering),
+    singleProcess: flag(raw.singleProcess, d.singleProcess),
+    processPerSite: flag(raw.processPerSite, d.processPerSite),
+    jsMemoryMB: num(raw.jsMemoryMB),
+    animatedScrolling: flag(raw.animatedScrolling, d.animatedScrolling),
+    backgroundOptimizations: flag(raw.backgroundOptimizations, d.backgroundOptimizations),
+    disablePageAnimations: flag(raw.disablePageAnimations, d.disablePageAnimations),
+    disablePinchZoom: flag(raw.disablePinchZoom, d.disablePinchZoom),
+  };
 }
 
 function legacyConfigFromUserJs(content) {
@@ -124,6 +173,7 @@ function readConfig() {
     if (typeof parsed.start_minimized === 'boolean') cfg.start_minimized = parsed.start_minimized;
     if (DISPLAYS.includes(parsed.display)) cfg.display = parsed.display;
     if (Array.isArray(parsed.mods_enabled)) cfg.mods_enabled = sanitizeModIds(parsed.mods_enabled);
+    cfg.engine = sanitizeEngine(parsed.engine);
     return cfg;
   } catch (e) {
     try {
@@ -148,6 +198,7 @@ function writeConfig(cfg) {
   clean.start_minimized = !!cfg.start_minimized;
   clean.display = DISPLAYS.includes(cfg.display) ? cfg.display : 'auto';
   clean.mods_enabled = sanitizeModIds(cfg.mods_enabled);
+  clean.engine = sanitizeEngine(cfg.engine);
   fs.mkdirSync(configDir(), { recursive: true });
   fs.writeFileSync(configPath(), JSON.stringify(clean, null, 2) + '\n');
   return clean;
@@ -423,9 +474,57 @@ let topbarView = null;
 let mainView = null;
 let panelView = null;
 let tray = null;
+let ses = null;
 let cfg = defaultConfig();
 let panelOpen = false;
 let quitting = false;
+
+function selectSession() {
+  if (cfg.engine.persistentCookies) return session.defaultSession;
+  return session.fromPartition('inmemory:ruwa', { cache: false });
+}
+
+function applyEngineFlags(eng) {
+  const cmd = app.commandLine;
+  if (eng.disableGpu || eng.forceSoftwareRendering) {
+    app.disableHardwareAcceleration();
+  }
+  if (eng.forceSoftwareRendering) {
+    cmd.appendSwitch('enable-unsafe-swiftshader');
+  }
+  if (eng.gpuSameProcess) {
+    cmd.appendSwitch('in-process-gpu');
+  }
+  if (eng.disableVsync) {
+    cmd.appendSwitch('disable-gpu-vsync');
+  }
+  if (eng.singleProcess) {
+    cmd.appendSwitch('single-process');
+  }
+  if (eng.processPerSite) {
+    cmd.appendSwitch('process-per-site');
+  }
+  if (eng.jsMemoryMB > 0) {
+    cmd.appendSwitch('js-flags', `--max-old-space-size=${eng.jsMemoryMB}`);
+  }
+  if (eng.diskCacheMB > 0) {
+    cmd.appendSwitch('disk-cache-size', String(eng.diskCacheMB * 1048576));
+  }
+  if (!eng.animatedScrolling) {
+    cmd.appendSwitch('disable-smooth-scrolling');
+  }
+  if (!eng.backgroundOptimizations) {
+    cmd.appendSwitch('disable-background-timer-throttling');
+    cmd.appendSwitch('disable-backgrounding-occluded-windows');
+    cmd.appendSwitch('disable-renderer-backgrounding');
+  }
+  if (eng.disablePageAnimations) {
+    cmd.appendSwitch('disable-animations');
+  }
+  if (eng.disablePinchZoom) {
+    cmd.appendSwitch('disable-pinch');
+  }
+}
 
 function showMain() {
   if (!win) return;
@@ -530,7 +629,6 @@ function userArgs(argv) {
 }
 
 function createWindow(startHidden) {
-  const ses = session.defaultSession;
   ses.setUserAgent(chromeUA());
   vlog(`user agent: ${chromeUA()}`);
 
@@ -568,6 +666,7 @@ function createWindow(startHidden) {
 
   mainView = new WebContentsView({
     webPreferences: {
+      session: ses,
       contextIsolation: true,
       sandbox: false,
       backgroundThrottling: false,
@@ -576,6 +675,7 @@ function createWindow(startHidden) {
 
   topbarView = new WebContentsView({
     webPreferences: {
+      session: ses,
       preload: path.join(appDir(), 'preload-topbar.js'),
       contextIsolation: true,
       sandbox: true,
@@ -584,6 +684,7 @@ function createWindow(startHidden) {
 
   panelView = new WebContentsView({
     webPreferences: {
+      session: ses,
       preload: path.join(appDir(), 'preload-panel.js'),
       contextIsolation: true,
       sandbox: true,
@@ -730,9 +831,13 @@ function registerIpc() {
     return !!on;
   });
   ipcMain.handle('panel:logout', async () => {
-    await session.defaultSession.clearStorageData();
+    await ses.clearStorageData();
     reloadMain();
     return true;
+  });
+  ipcMain.handle('panel:restart', () => {
+    app.relaunch();
+    app.quit();
   });
   ipcMain.handle('panel:reload-main', () => {
     reloadMain();
@@ -831,8 +936,13 @@ async function main() {
       `display=${cfg.display} mods=${JSON.stringify(cfg.mods_enabled)}`
   );
   applyDisplayBackend(cfg.display);
+  applyEngineFlags(cfg.engine);
+  vlog(`engine: ${JSON.stringify(cfg.engine)}`);
 
   await app.whenReady();
+
+  ses = selectSession();
+  vlog(`session persistent=${cfg.engine.persistentCookies}`);
 
   if (cli.quit) {
     console.error('ruwa: not running');
