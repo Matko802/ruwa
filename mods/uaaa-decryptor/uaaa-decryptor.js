@@ -394,6 +394,22 @@ function GM_registerMenuCommand() {
         }
     }
 
+    function placeEncryptButton(btn, proto) {
+        var parent = proto.parentNode;
+        if (!parent) return;
+        parent.insertBefore(btn, proto.nextSibling);
+        try {
+            var pr = proto.getBoundingClientRect();
+            var br = btn.getBoundingClientRect();
+            if (pr.width > 0 && br.width > 0 && br.top >= pr.bottom - 2) {
+                var gp = parent.parentNode;
+                if (gp && gp !== document.body) {
+                    gp.insertBefore(btn, parent.nextSibling);
+                }
+            }
+        } catch (e) {}
+    }
+
     function ensureEncryptButton() {
         try {
             if (document.querySelector('[data-uaaa-encrypt]')) return;
@@ -403,14 +419,24 @@ function GM_registerMenuCommand() {
             btn.removeAttribute('data-testid');
             btn.removeAttribute('id');
             btn.setAttribute('data-uaaa-encrypt', '1');
-            btn.style.marginInlineStart = '8px';
+            try {
+                btn.disabled = false;
+                btn.removeAttribute('disabled');
+                btn.removeAttribute('aria-disabled');
+                btn.style.display = 'inline-flex';
+                btn.style.verticalAlign = 'middle';
+                btn.style.flex = 'none';
+                btn.style.alignItems = 'center';
+                btn.style.justifyContent = 'center';
+                btn.style.marginInlineStart = '8px';
+            } catch (e) {}
             setComposerIcon(btn, true);
             btn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 toggleComposerCrypt(found.editable, btn);
             }, true);
-            found.proto.parentNode.insertBefore(btn, found.proto.nextSibling);
+            placeEncryptButton(btn, found.proto);
         } catch (err) {
             console.warn('[UAAA] encrypt button skipped:', err && err.message);
         }
