@@ -392,7 +392,8 @@ const REBRAND_JS = `(function(){
 if (window.__ruwaRebrand) return;
 window.__ruwaRebrand = true;
 var seen = new WeakSet();
-var queued = false;
+var sweepQueue = [];
+var sweeping = false;
 function rename(node) {
   try {
     if (!node.nodeValue || seen.has(node)) return;
@@ -411,21 +412,43 @@ function rename(node) {
 function sweep(root) {
   try {
     var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
-    var batch = [], n, count = 0;
-    while ((n = walker.nextNode())) batch.push(n);
-    for (var i = 0; i < batch.length && count < 600; i++) { rename(batch[i]); count++; }
+    var n;
+    while ((n = walker.nextNode())) sweepQueue.push(n);
   } catch (e) { console.warn('[ruwa] rebrand sweep skipped:', e && e.message); }
+  pumpSweep();
+}
+function pumpSweep() {
+  if (sweeping) return;
+  sweeping = true;
+  (window.requestAnimationFrame || function (f) { setTimeout(f, 100); })(function () {
+    try {
+      var count = 0;
+      while (sweepQueue.length && count < 600) {
+        rename(sweepQueue.shift());
+        count++;
+      }
+    } catch (e) {}
+    sweeping = false;
+    if (sweepQueue.length) pumpSweep();
+  });
 }
 function schedule() {
-  if (queued) return;
-  queued = true;
-  (window.requestAnimationFrame || function (f) { setTimeout(f, 100); })(function () {
-    queued = false;
-    try { sweep(document.body); } catch (e) {}
-  });
+  sweep(document.body);
 }
 try {
   sweep(document.body);
+  var titleEl = document.querySelector('title');
+  var renameTitle = function () {
+    try {
+      var t = document.title;
+      var nt = t.replace(/WHATSAPP/g, 'RUWA').replace(/WhatsApp/g, 'Ruwa').replace(/whatsapp/g, 'ruwa');
+      if (nt !== t) document.title = nt;
+    } catch (e) {}
+  };
+  renameTitle();
+  if (titleEl) {
+    new MutationObserver(function () { renameTitle(); }).observe(titleEl, { childList: true, characterData: true, subtree: true });
+  }
   new MutationObserver(function (muts) {
     try {
       for (var i = 0; i < muts.length; i++) {

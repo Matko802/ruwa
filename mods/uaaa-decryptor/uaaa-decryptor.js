@@ -403,13 +403,14 @@ function GM_registerMenuCommand() {
             btn.removeAttribute('data-testid');
             btn.removeAttribute('id');
             btn.setAttribute('data-uaaa-encrypt', '1');
+            btn.style.marginInlineStart = '8px';
             setComposerIcon(btn, true);
             btn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 toggleComposerCrypt(found.editable, btn);
             }, true);
-            found.proto.parentNode.insertBefore(btn, found.proto);
+            found.proto.parentNode.insertBefore(btn, found.proto.nextSibling);
         } catch (err) {
             console.warn('[UAAA] encrypt button skipped:', err && err.message);
         }
