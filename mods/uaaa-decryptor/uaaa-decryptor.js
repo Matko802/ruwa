@@ -344,22 +344,63 @@ function GM_registerMenuCommand() {
         } catch (e) {}
     }
 
+    function visibleRect(el) {
+        try {
+            var r = el.getBoundingClientRect();
+            if (r && r.width > 0 && r.height > 0) return r;
+        } catch (e) {}
+        return null;
+    }
+
+    function pickProtoButton(footer) {
+        try {
+            var cands = footer.querySelectorAll('[data-testid="compose-btn-send"], [data-testid="ptt-draft-button-send"], button:not([data-uaaa-encrypt])');
+            var fallback = null;
+            for (var i = 0; i < cands.length; i++) {
+                if (cands[i].hasAttribute && cands[i].hasAttribute('data-uaaa-encrypt')) continue;
+                if (!fallback) fallback = cands[i];
+                if (visibleRect(cands[i])) return cands[i];
+            }
+            return fallback;
+        } catch (e) {
+            return null;
+        }
+    }
+
     function findComposer() {
         try {
             const editable = document.querySelector('footer div[contenteditable="true"], footer [role="textbox"][contenteditable="true"]');
             if (!editable) return null;
             const footer = editable.closest ? editable.closest('footer') : null;
             if (!footer) return null;
-            let proto = footer.querySelector('[data-testid="compose-btn-send"], [data-testid="ptt-draft-button-send"]');
-            if (!proto) {
-                const btns = footer.querySelectorAll('button');
-                proto = btns.length ? btns[btns.length - 1] : null;
-            }
+            const proto = pickProtoButton(footer);
             if (!proto || !proto.parentNode) return null;
             return { editable, footer, proto };
         } catch (e) {
             return null;
         }
+    }
+
+    function isStackedUnder(btn, ref) {
+        var br = visibleRect(btn);
+        var pr = visibleRect(ref);
+        if (!br || !pr) return false;
+        return br.top >= pr.bottom - 2;
+    }
+
+    function validateEncryptPlacement() {
+        try {
+            var btn = document.querySelector('[data-uaaa-encrypt]');
+            if (!btn) {
+                ensureEncryptButton();
+                return;
+            }
+            var footer = btn.closest ? btn.closest('footer') : null;
+            if (!footer) return;
+            var ref = pickProtoButton(footer);
+            if (!ref || ref === btn) return;
+            if (isStackedUnder(btn, ref)) placeBeside(btn, ref);
+        } catch (e) {}
     }
 
     function toggleComposerCrypt(editable, btn) {
@@ -394,20 +435,25 @@ function GM_registerMenuCommand() {
         }
     }
 
-    function placeEncryptButton(btn, proto) {
-        var parent = proto.parentNode;
-        if (!parent) return;
-        parent.insertBefore(btn, proto.nextSibling);
-        try {
-            var pr = proto.getBoundingClientRect();
-            var br = btn.getBoundingClientRect();
-            if (pr.width > 0 && br.width > 0 && br.top >= pr.bottom - 2) {
-                var gp = parent.parentNode;
-                if (gp && gp !== document.body) {
-                    gp.insertBefore(btn, parent.nextSibling);
-                }
+    function placeBeside(btn, ref) {
+        var node = ref;
+        for (var level = 0; level < 3; level++) {
+            var parent = node.parentNode;
+            if (!parent || parent === document.body) break;
+            try {
+                parent.insertBefore(btn, node.nextSibling);
+            } catch (e) {
+                break;
             }
-        } catch (e) {}
+            if (!isStackedUnder(btn, ref)) return true;
+            if (parent.tagName === 'FOOTER') break;
+            node = parent;
+        }
+        return !isStackedUnder(btn, ref);
+    }
+
+    function placeEncryptButton(btn, proto) {
+        placeBeside(btn, proto);
     }
 
     function ensureEncryptButton() {
@@ -453,6 +499,9 @@ function GM_registerMenuCommand() {
     injectStyles();
     enqueueNode(document.body);
     ensureEncryptButton();
+    try {
+        setInterval(validateEncryptPlacement, 2500);
+    } catch (e) {}
 
     const observer = new MutationObserver((mutations) => {
       try {
