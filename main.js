@@ -781,6 +781,23 @@ function createWindow(startHidden) {
   topbarView.webContents.loadFile(path.join(appDir(), 'topbar.html'));
   panelView.webContents.loadFile(path.join(appDir(), 'panel.html'));
 
+  const toggleTools = (wc) => {
+    if (wc.isDevToolsOpened()) wc.closeDevTools();
+    else wc.openDevTools({ mode: 'detach' });
+  };
+  const devtoolsKeys = (wc) => (e, input) => {
+    if (input.type !== 'keyDown') return;
+    if (
+      input.key === 'F12' ||
+      (input.control && input.shift && (input.key === 'I' || input.key === 'i'))
+    ) {
+      e.preventDefault();
+      toggleTools(wc);
+    }
+  };
+  mainView.webContents.on('before-input-event', devtoolsKeys(mainView.webContents));
+  panelView.webContents.on('before-input-event', devtoolsKeys(panelView.webContents));
+
   ses.setPermissionRequestHandler((wc, permission, callback) => {
     const url = wc.getURL ? wc.getURL() : '';
     vlog(`permission '${permission}' from ${url}`);
