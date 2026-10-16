@@ -364,14 +364,20 @@ function GM_registerMenuCommand() {
 
     function pickProtoButton(footer) {
         try {
-            var cands = footer.querySelectorAll('[data-testid="compose-btn-send"], [data-testid="ptt-draft-button-send"], button:not([data-uaaa-encrypt])');
+            var testids = footer.querySelectorAll('[data-testid="compose-btn-send"], [data-testid="ptt-draft-button-send"]');
             var fallback = null;
-            for (var i = 0; i < cands.length; i++) {
-                if (cands[i].hasAttribute && cands[i].hasAttribute('data-uaaa-encrypt')) continue;
-                if (!fallback) fallback = cands[i];
-                if (visibleRect(cands[i])) return cands[i];
+            for (var i = 0; i < testids.length; i++) {
+                var t = testids[i];
+                if (t.hasAttribute && t.hasAttribute('data-uaaa-encrypt')) continue;
+                if (!fallback) fallback = t;
+                if (visibleRect(t)) return t;
             }
-            return fallback;
+            if (fallback) return fallback;
+            var btns = footer.querySelectorAll('button:not([data-uaaa-encrypt])');
+            for (var j = btns.length - 1; j >= 0; j--) {
+                if (visibleRect(btns[j])) return btns[j];
+            }
+            return btns.length ? btns[btns.length - 1] : null;
         } catch (e) {
             return null;
         }
