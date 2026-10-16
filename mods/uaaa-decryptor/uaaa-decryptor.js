@@ -282,39 +282,57 @@ function GM_registerMenuCommand() {
         scannedNodes.add(node);
     }
 
-    // --- Performance Queuing ---
-    function processQueue() {
-        const startTime = performance.now();
+    // --- Performance: batched intake, single rAF pump, bounded queues ---
+    const pendingRoots = new Set();
 
-        for (const node of nodeQueue) {
-            if (performance.now() - startTime > 15) break;
+    function kickPump() {
+        if (isProcessingQueue) return;
+        isProcessingQueue = true;
+        window.requestAnimationFrame(pumpNow);
+    }
 
-            nodeQueue.delete(node);
-            processTextNode(node);
-        }
-
-        if (nodeQueue.size > 0) {
-            window.requestAnimationFrame(processQueue);
+    function pumpNow() {
+        try {
+            if (pendingRoots.size > 2000) {
+                pendingRoots.clear();
+                pendingRoots.add(document.body);
+            }
+            for (const root of pendingRoots) {
+                pendingRoots.delete(root);
+                if (root.nodeType === Node.TEXT_NODE) {
+                    nodeQueue.add(root);
+                } else if (root.nodeType === Node.ELEMENT_NODE && !CONFIG.ignoreTags.has(root.tagName)) {
+                    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+                    let currentNode;
+                    while ((currentNode = walker.nextNode())) {
+                        nodeQueue.add(currentNode);
+                    }
+                }
+            }
+            const startTime = performance.now();
+            for (const node of nodeQueue) {
+                nodeQueue.delete(node);
+                processTextNode(node);
+                if (performance.now() - startTime > 12) break;
+            }
+        } catch (e) {}
+        if (pendingRoots.size > 0 || nodeQueue.size > 0) {
+            window.requestAnimationFrame(pumpNow);
         } else {
             isProcessingQueue = false;
         }
     }
 
     function enqueueNode(node) {
+        if (!node) return;
         if (node.nodeType === Node.TEXT_NODE) {
             nodeQueue.add(node);
-        } else if (node.nodeType === Node.ELEMENT_NODE && !CONFIG.ignoreTags.has(node.tagName)) {
-            const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null, false);
-            let currentNode;
-            while ((currentNode = walker.nextNode())) {
-                nodeQueue.add(currentNode);
-            }
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            pendingRoots.add(node);
+        } else {
+            return;
         }
-
-        if (!isProcessingQueue && nodeQueue.size > 0) {
-            isProcessingQueue = true;
-            window.requestAnimationFrame(processQueue);
-        }
+        kickPump();
     }
 
     // --- Floating encrypt button near the chatbox (original extension behavior) ---
