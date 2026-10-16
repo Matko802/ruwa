@@ -115,6 +115,16 @@ function GM_registerMenuCommand() {
             }
             .uaaa-btn.success { color: #00e676; }
             .uaaa-btn.error { color: #ff5252; }
+            [data-uaaa-encrypt] {
+                background-color: #00a884 !important;
+                color: #ffffff !important;
+            }
+            [data-uaaa-encrypt] svg {
+                width: 24px !important;
+                height: 24px !important;
+                fill: currentColor;
+                display: block;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -469,12 +479,18 @@ function GM_registerMenuCommand() {
                 btn.disabled = false;
                 btn.removeAttribute('disabled');
                 btn.removeAttribute('aria-disabled');
-                btn.style.display = 'inline-flex';
-                btn.style.verticalAlign = 'middle';
-                btn.style.flex = 'none';
-                btn.style.alignItems = 'center';
-                btn.style.justifyContent = 'center';
-                btn.style.marginInlineStart = '8px';
+                btn.style.setProperty('display', 'inline-flex', 'important');
+                btn.style.setProperty('vertical-align', 'middle', 'important');
+                btn.style.setProperty('flex', 'none', 'important');
+                btn.style.setProperty('align-items', 'center', 'important');
+                btn.style.setProperty('justify-content', 'center', 'important');
+                btn.style.setProperty('width', '40px', 'important');
+                btn.style.setProperty('height', '40px', 'important');
+                btn.style.setProperty('min-width', '40px', 'important');
+                btn.style.setProperty('padding', '0', 'important');
+                btn.style.setProperty('border-radius', '50%', 'important');
+                btn.style.setProperty('overflow', 'hidden', 'important');
+                btn.style.setProperty('margin-inline-start', '8px', 'important');
             } catch (e) {}
             setComposerIcon(btn, true);
             btn.addEventListener('click', function (e) {
