@@ -400,16 +400,9 @@ function GM_registerMenuCommand() {
 
     function validateEncryptPlacement() {
         try {
-            var btn = document.querySelector('[data-uaaa-encrypt]');
-            if (!btn) {
+            if (!document.querySelector('[data-uaaa-encrypt]')) {
                 ensureEncryptButton();
-                return;
             }
-            var footer = btn.closest ? btn.closest('footer') : null;
-            if (!footer) return;
-            var ref = pickProtoButton(footer);
-            if (!ref || ref === btn) return;
-            if (isStackedUnder(btn, ref)) placeBeside(btn, ref);
         } catch (e) {}
     }
 
@@ -446,20 +439,14 @@ function GM_registerMenuCommand() {
     }
 
     function placeBeside(btn, ref) {
-        var node = ref;
-        for (var level = 0; level < 3; level++) {
-            var parent = node.parentNode;
-            if (!parent || parent === document.body) break;
-            try {
-                parent.insertBefore(btn, node.nextSibling);
-            } catch (e) {
-                break;
-            }
-            if (!isStackedUnder(btn, ref)) return true;
-            if (parent.tagName === 'FOOTER') break;
-            node = parent;
+        var container = ref.parentNode;
+        if (!container) return false;
+        try {
+            container.insertBefore(btn, ref.nextSibling);
+        } catch (e) {
+            return false;
         }
-        return !isStackedUnder(btn, ref);
+        return true;
     }
 
     function placeEncryptButton(btn, proto) {
