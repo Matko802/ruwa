@@ -94,24 +94,54 @@ function GM_registerMenuCommand() {
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                width: 28px;
-                height: 28px;
-                padding: 0;
-                border-radius: 50%;
+                gap: 6px;
+                padding: 5px 12px 5px 9px;
+                border-radius: 999px;
                 cursor: pointer;
                 outline: none;
                 text-decoration: none;
+                font-size: 0.78em;
+                font-weight: 500;
+                font-family: inherit;
+                white-space: nowrap;
                 background: transparent;
                 color: inherit;
                 border: 1px solid currentColor;
-                opacity: 0.85;
+                opacity: 0.9;
             }
             .uaaa-btn:hover { opacity: 1; }
             .uaaa-btn svg {
-                width: 18px;
-                height: 18px;
+                width: 16px;
+                height: 16px;
                 fill: currentColor;
                 display: block;
+                flex: none;
+            }
+            .uaaa-compose-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                height: 40px;
+                padding: 0 18px 0 14px;
+                margin-inline-start: 8px;
+                border-radius: 999px;
+                border: 0;
+                cursor: pointer;
+                background: #00a884;
+                color: #ffffff;
+                font-size: 14px;
+                font-weight: 500;
+                font-family: inherit;
+                white-space: nowrap;
+                flex: none;
+            }
+            .uaaa-compose-pill:hover { filter: brightness(1.08); }
+            .uaaa-compose-pill svg {
+                width: 20px;
+                height: 20px;
+                fill: currentColor;
+                display: block;
+                flex: none;
             }
             .uaaa-btn.success { color: #00e676; }
             .uaaa-btn.error { color: #ff5252; }
@@ -185,13 +215,13 @@ function GM_registerMenuCommand() {
         const toggleBtn = document.createElement('button');
         toggleBtn.className = 'uaaa-btn';
         toggleBtn.type = 'button';
-        toggleBtn.innerHTML = svgIcon(UNLOCK_PATH);
+        toggleBtn.innerHTML = svgIcon(UNLOCK_PATH, 16) + '<span>Decrypt</span>';
         toggleBtn.title = 'Decrypt cipher text';
         toggleBtn.setAttribute('aria-label', 'Decrypt cipher text');
 
         const infoBtn = document.createElement('a');
         infoBtn.className = 'uaaa-btn link';
-        infoBtn.innerHTML = svgIcon(INFO_PATH);
+        infoBtn.innerHTML = svgIcon(INFO_PATH, 16) + '<span>Info</span>';
         infoBtn.href = `${CONFIG.url}?m=dec&d=${encodeURIComponent(cipherBlob)}`;
         infoBtn.target = '_blank';
         infoBtn.rel = 'noopener noreferrer';
@@ -205,7 +235,8 @@ function GM_registerMenuCommand() {
         parent.appendChild(container);
 
         function setToggleIcon(locked, errMsg) {
-            toggleBtn.innerHTML = svgIcon(locked ? UNLOCK_PATH : LOCK_PATH);
+            const label = errMsg ? 'Error' : (locked ? 'Decrypt' : 'Encrypt');
+            toggleBtn.innerHTML = svgIcon(locked ? UNLOCK_PATH : LOCK_PATH, 16) + '<span>' + label + '</span>';
             toggleBtn.className = 'uaaa-btn' + (errMsg ? ' error' : (locked ? '' : ' success'));
             toggleBtn.title = errMsg || (locked ? 'Decrypt cipher text' : 'Re-encrypt text');
             toggleBtn.setAttribute('aria-label', toggleBtn.title);
@@ -339,7 +370,8 @@ function GM_registerMenuCommand() {
 
     function setComposerIcon(btn, locked) {
         try {
-            btn.innerHTML = svgIcon(locked ? LOCK_PATH : UNLOCK_PATH, 24);
+            btn.innerHTML = svgIcon(locked ? LOCK_PATH : UNLOCK_PATH, 20) +
+                '<span>' + (locked ? 'Encrypt' : 'Decrypt') + '</span>';
             btn.setAttribute('aria-label', locked ? 'Encrypt with UAAA' : 'Restore original text');
             btn.setAttribute('title', locked ? 'Encrypt with UAAA' : 'Restore original text');
         } catch (e) {}
@@ -444,54 +476,25 @@ function GM_registerMenuCommand() {
         }
     }
 
-    function placeBeside(btn, ref) {
-        var container = ref.parentNode;
-        if (!container) return false;
-        try {
-            container.insertBefore(btn, ref.nextSibling);
-        } catch (e) {
-            return false;
-        }
-        return true;
-    }
-
-    function placeEncryptButton(btn, proto) {
-        placeBeside(btn, proto);
-    }
-
     function ensureEncryptButton() {
         try {
             if (document.querySelector('[data-uaaa-encrypt]')) return;
             const found = findComposer();
             if (!found) return;
-            const btn = found.proto.cloneNode(false);
-            btn.removeAttribute('data-testid');
-            btn.removeAttribute('id');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'uaaa-compose-pill';
             btn.setAttribute('data-uaaa-encrypt', '1');
-            try {
-                btn.disabled = false;
-                btn.removeAttribute('disabled');
-                btn.removeAttribute('aria-disabled');
-                btn.style.setProperty('display', 'inline-flex', 'important');
-                btn.style.setProperty('vertical-align', 'middle', 'important');
-                btn.style.setProperty('flex', 'none', 'important');
-                btn.style.setProperty('align-items', 'center', 'important');
-                btn.style.setProperty('justify-content', 'center', 'important');
-                btn.style.setProperty('width', '40px', 'important');
-                btn.style.setProperty('height', '40px', 'important');
-                btn.style.setProperty('min-width', '40px', 'important');
-                btn.style.setProperty('padding', '0', 'important');
-                btn.style.setProperty('border-radius', '50%', 'important');
-                btn.style.setProperty('overflow', 'hidden', 'important');
-                btn.style.setProperty('margin-inline-start', '8px', 'important');
-            } catch (e) {}
             setComposerIcon(btn, true);
             btn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 toggleComposerCrypt(found.editable, btn);
             }, true);
-            placeEncryptButton(btn, found.proto);
+            var container = found.proto.parentNode;
+            if (!container) return;
+            if (found.proto.nextSibling) container.insertBefore(btn, found.proto.nextSibling);
+            else container.appendChild(btn);
         } catch (err) {
             console.warn('[UAAA] encrypt button skipped:', err && err.message);
         }
