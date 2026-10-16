@@ -59,6 +59,8 @@ function GM_registerMenuCommand() {
         regex: /(UAAA[UA]+)/gi,
         key: '\x55\x41\x41\x41', // "UAAA"
         ignoreTags: new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'NOSCRIPT', 'CODE', 'PRE', 'CANVAS', 'SVG']),
+        inputSelector: 'input[type="text"], input[type="search"], input[type="url"], input[type="tel"], input:not([type]), textarea, div[contenteditable="true"], [role="textbox"][contenteditable="true"]',
+        inputIdleMs: 2000
     };
 
     const LOCK_PATH = 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z';
@@ -117,55 +119,16 @@ function GM_registerMenuCommand() {
                 display: block;
                 flex: none;
             }
-            .uaaa-compose-pill {
-                display: inline-flex;
+            .uaaa-input-btn-group {
+                position: absolute;
+                display: none;
                 align-items: center;
-                gap: 8px;
-                height: 40px;
-                padding: 0 18px 0 14px;
-                margin-inline-start: 8px;
-                border-radius: 999px;
-                border: 0;
-                cursor: pointer;
-                background: #00a884;
-                color: #ffffff;
-                font-size: 14px;
-                font-weight: 500;
-                font-family: inherit;
-                white-space: nowrap;
-                flex: none;
+                z-index: 999999;
             }
-            .uaaa-compose-pill:hover { filter: brightness(1.08); }
-            .uaaa-compose-pill svg {
-                width: 20px;
-                height: 20px;
-                fill: currentColor;
-                display: block;
-                flex: none;
-            }
-            .uaaa-compose-btn {
+            .uaaa-input-btn-group.visible {
                 display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                border: 0;
-                cursor: pointer;
-                padding: 0;
-                margin-inline-start: 8px;
-                background: #00a884;
-                color: #ffffff;
-                flex: none;
-                vertical-align: middle;
             }
-            .uaaa-compose-btn:hover { filter: brightness(1.08); }
-            .uaaa-compose-btn svg {
-                width: 24px;
-                height: 24px;
-                fill: currentColor;
-                display: block;
-            }
+
             .uaaa-btn.success { color: #00e676; }
             .uaaa-btn.error { color: #ff5252; }
             [data-uaaa-encrypt] {
@@ -354,8 +317,8 @@ function GM_registerMenuCommand() {
         }
     }
 
-    // --- Composer encrypt button: clone of WhatsApp's own voice button ---
-    const composerCrypt = { plaintext: '', isEncrypted: false };
+    // --- Floating encrypt button near the chatbox (original extension behavior) ---
+    const inputStates = new WeakMap();
     let suppressInputReset = false;
 
     function getEditableHost(el) {
@@ -366,7 +329,9 @@ function GM_registerMenuCommand() {
 
     // Reads the current text out of either a native form field or a contenteditable box.
     function getElText(el) {
-        return el.isContentEditable ? el.innerText : el.value;
+        if (!el) return '';
+        if (el.isContentEditable) return el.innerText || el.textContent || '';
+        return el.value || '';
     }
 
     // Writes text back in a way that framework-controlled fields (React, etc.) actually notice.
@@ -391,113 +356,180 @@ function GM_registerMenuCommand() {
         }
     }
 
-    function setComposerIcon(btn, locked) {
+    function setFieldContent(btn, locked, errMsg) {
         try {
-            btn.innerHTML = svgIcon(locked ? LOCK_PATH : UNLOCK_PATH, 24);
-            btn.setAttribute('aria-label', locked ? 'Encrypt with UAAA' : 'Restore original text');
-            btn.setAttribute('title', locked ? 'Encrypt with UAAA' : 'Restore original text');
+            btn.innerHTML = svgIcon(locked ? LOCK_PATH : UNLOCK_PATH, 18) +
+                '<span>' + (errMsg ? 'Error' : (locked ? 'Encrypt' : 'Decrypt')) + '</span>';
+            btn.className = 'uaaa-btn' + (errMsg ? ' error' : (locked ? '' : ' success'));
+            const label = errMsg || (locked ? 'Encrypt this field with UAAA' : 'Restore original text');
+            btn.title = label;
+            btn.setAttribute('aria-label', label);
         } catch (e) {}
     }
 
-    function resetComposerCrypt() {
-        composerCrypt.plaintext = '';
-        composerCrypt.isEncrypted = false;
-        try {
-            const b = document.querySelector('[data-uaaa-encrypt]');
-            if (b) setComposerIcon(b, true);
-        } catch (e) {}
+    function isEligibleInput(el) {
+        if (!el) return false;
+        const host = getEditableHost(el);
+        if (host) return !host.readOnly && !host.disabled;
+        return el.matches && el.matches(CONFIG.inputSelector) && !el.readOnly && !el.disabled;
     }
 
-    function findComposer() {
-        try {
-            const editable = document.querySelector('footer div[contenteditable="true"], footer [role="textbox"][contenteditable="true"]');
-            if (!editable) return null;
-            const footer = editable.closest ? editable.closest('footer') : null;
-            if (!footer) return null;
-            return { editable, footer };
-        } catch (e) {
-            return null;
-        }
-    }
+    function getOrCreateState(el) {
+        const host = getEditableHost(el) || el;
+        let state = inputStates.get(host);
+        if (state) return state;
 
-    function validateEncryptPlacement() {
-        try {
-            if (!document.querySelector('[data-uaaa-encrypt]')) {
-                ensureEncryptButton();
-            }
-        } catch (e) {}
-    }
+        const container = document.createElement('span');
+        container.className = 'uaaa-btn-group uaaa-input-btn-group';
+        container.contentEditable = "false";
 
-    function toggleComposerCrypt(editable, btn) {
-        try {
-            const host = getEditableHost(editable) || editable;
-            if (!composerCrypt.isEncrypted) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        setFieldContent(btn, true);
+        container.appendChild(btn);
+        document.body.appendChild(container);
+
+        state = { plaintext: '', isEncrypted: false, btnGroup: container, btn, timer: null, anchor: host, preventHide: false };
+        inputStates.set(host, state);
+
+        btn.addEventListener('pointerdown', () => {
+            state.preventHide = true;
+        });
+
+        btn.addEventListener('click', (e) => {
+          try {
+            e.preventDefault();
+            e.stopPropagation();
+            state.preventHide = false;
+
+            if (!state.isEncrypted) {
                 const plaintext = getElText(host);
                 if (!plaintext || !plaintext.trim()) return;
-                if (typeof _C !== 'function') throw new Error('Core API (_C) missing');
-                const cipher = _C(plaintext, CONFIG.key, true);
-                composerCrypt.plaintext = plaintext;
-                suppressInputReset = true;
                 try {
-                    setElText(host, cipher);
-                } finally {
-                    suppressInputReset = false;
+                    if (typeof _C !== 'function') throw new Error("Core API (_C) missing");
+                    const cipher = _C(plaintext, CONFIG.key, true);
+                    state.plaintext = plaintext;
+                    suppressInputReset = true;
+                    try {
+                        setElText(host, cipher);
+                    } finally {
+                        suppressInputReset = false;
+                    }
+                    state.isEncrypted = true;
+                    setFieldContent(btn, false);
+                } catch (err) {
+                    setFieldContent(btn, true, err.message);
                 }
-                composerCrypt.isEncrypted = true;
-                setComposerIcon(btn, false);
             } else {
                 suppressInputReset = true;
                 try {
-                    setElText(host, composerCrypt.plaintext);
+                    setElText(host, state.plaintext);
                 } finally {
                     suppressInputReset = false;
                 }
-                resetComposerCrypt();
+                state.isEncrypted = false;
+                setFieldContent(btn, true);
             }
-            try { host.focus(); } catch (e) {}
-        } catch (err) {
-            console.warn('[UAAA] composer crypt skipped:', err && err.message);
-        }
+            try { host.focus(); } catch (err) {}
+          } catch (err) {
+            console.warn('[UAAA] button skipped:', err && err.message);
+          }
+        });
+
+        return state;
     }
 
-    function ensureEncryptButton() {
-        try {
-            if (document.querySelector('[data-uaaa-encrypt]')) return;
-            const found = findComposer();
-            if (!found) return;
-            const host = getEditableHost(found.editable) || found.editable;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'uaaa-compose-btn';
-            btn.setAttribute('data-uaaa-encrypt', '1');
-            setComposerIcon(btn, true);
-            btn.addEventListener('click', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleComposerCrypt(host, btn);
-            }, true);
-            if (!host.parentNode) return;
-            if (host.nextSibling) host.parentNode.insertBefore(btn, host.nextSibling);
-            else host.parentNode.appendChild(btn);
-        } catch (err) {
-            console.warn('[UAAA] encrypt button skipped:', err && err.message);
-        }
+    function positionButton(state) {
+        const el = state.anchor;
+        if (!el || !document.body.contains(el)) return;
+
+        const rect = el.getBoundingClientRect();
+        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+        state.btnGroup.style.visibility = 'hidden';
+        state.btnGroup.classList.add('visible');
+        state.btnGroup.style.display = 'inline-flex';
+        const width = state.btnGroup.offsetWidth;
+        const height = state.btnGroup.offsetHeight;
+
+        const left = Math.min(rect.right + scrollX - width, rect.left + scrollX + 10);
+        const top = Math.max(rect.top + scrollY - height - 6, scrollY + 6);
+
+        state.btnGroup.style.left = `${Math.max(left, scrollX + 6)}px`;
+        state.btnGroup.style.top = `${top}px`;
+        state.btnGroup.style.visibility = 'visible';
     }
 
-    document.addEventListener('input', function (e) {
-        try {
-            if (suppressInputReset) return;
-            if (getEditableHost(e.target)) resetComposerCrypt();
-        } catch (err) {}
+    function showButton(state, el) {
+        const host = getEditableHost(el) || el;
+        if (!getElText(host)) {
+            hideButton(state);
+            return;
+        }
+        state.anchor = host;
+        positionButton(state);
+        state.btnGroup.classList.add('visible');
+    }
+
+    function hideButton(state) {
+        state.btnGroup.classList.remove('visible');
+        state.btnGroup.style.display = 'none';
+    }
+
+    document.addEventListener('input', (e) => {
+      try {
+        if (suppressInputReset) return;
+        if (!isEligibleInput(e.target)) return;
+        const el = getEditableHost(e.target) || e.target;
+        const state = getOrCreateState(el);
+
+        clearTimeout(state.timer);
+        hideButton(state);
+
+        if (state.isEncrypted) {
+            state.isEncrypted = false;
+            state.plaintext = '';
+            setFieldContent(state.btn, true);
+        }
+
+        state.timer = setTimeout(() => showButton(state, el), CONFIG.inputIdleMs);
+      } catch (err) {
+        console.warn('[UAAA] input skipped:', err && err.message);
+      }
     }, true);
+
+    document.addEventListener('focusin', (e) => {
+      try {
+        if (suppressInputReset) return;
+        if (!isEligibleInput(e.target)) return;
+        const el = getEditableHost(e.target) || e.target;
+        const state = getOrCreateState(el);
+        clearTimeout(state.timer);
+        state.timer = setTimeout(() => showButton(state, el), CONFIG.inputIdleMs);
+      } catch (err) {
+        console.warn('[UAAA] focus skipped:', err && err.message);
+      }
+    }, true);
+
+    document.addEventListener('focusout', (e) => {
+      try {
+        if (!isEligibleInput(e.target)) return;
+        const el = getEditableHost(e.target) || e.target;
+        const state = inputStates.get(el);
+        if (!state) return;
+        if (state.preventHide) return;
+        clearTimeout(state.timer);
+        hideButton(state);
+      } catch (err) {
+        console.warn('[UAAA] blur skipped:', err && err.message);
+      }
+    }, true);
+
 
     // --- Initialization & Observation ---
     injectStyles();
     enqueueNode(document.body);
-    ensureEncryptButton();
-    try {
-        setInterval(validateEncryptPlacement, 2500);
-    } catch (e) {}
 
     const observer = new MutationObserver((mutations) => {
       try {
@@ -522,7 +554,6 @@ function GM_registerMenuCommand() {
                 }
             }
         }
-        ensureEncryptButton();
       } catch (e) {
         console.warn('[UAAA] observer skipped batch:', e && e.message);
       }
