@@ -124,7 +124,7 @@ function GM_registerMenuCommand() {
                 width: 40px;
                 height: 40px;
                 padding: 0;
-                margin: 0 2px;
+                margin: 0;
                 flex: none;
                 border: 0;
                 border-radius: 50%;
@@ -374,6 +374,7 @@ function GM_registerMenuCommand() {
     }
 
     const composerCrypt = { plaintext: '', isEncrypted: false, btn: null, anchorRef: null, anchorColor: '' };
+    let suppressInputReset = false;
 
     function setComposerIcon(btn, locked, errMsg) {
         try {
@@ -455,7 +456,18 @@ function GM_registerMenuCommand() {
 
     function toggleComposerCrypt(editable, btn) {
         try {
-            const host = getEditableHost(editable) || editable;
+            let liveEditable = null;
+            try {
+                const foundNow = findComposer();
+                if (foundNow && foundNow.editable) liveEditable = foundNow.editable;
+            } catch (e) {}
+            if (!liveEditable) {
+                try {
+                    if (editable && document.body.contains(editable)) liveEditable = editable;
+                } catch (e) {}
+            }
+            if (!liveEditable) return;
+            const host = getEditableHost(liveEditable) || liveEditable;
             if (!composerCrypt.isEncrypted) {
                 const plaintext = getElText(host);
                 if (!plaintext || !plaintext.trim()) return;
@@ -490,9 +502,10 @@ function GM_registerMenuCommand() {
             const existing = document.querySelector('[data-uaaa-encrypt]');
             const found = findComposer();
             if (existing) {
-                const exSpan = existing.parentElement;
-                const wellPlaced = exSpan && exSpan.tagName === 'SPAN' && exSpan.className && String(exSpan.className).indexOf('html-span') !== -1
-                    && exSpan.parentElement && exSpan.parentElement.className && String(exSpan.parentElement.className).indexOf('html-span') === -1;
+                const exCell = existing.parentElement && existing.parentElement.parentElement ? existing.parentElement.parentElement : null;
+                const exWrap = exCell ? exCell.parentElement : null;
+                const wellPlaced = exCell && exCell.tagName === 'DIV' && !exCell.className
+                    && exWrap && exWrap.tagName === 'DIV' && exWrap.className && String(exWrap.className).indexOf('html-span') === -1;
                 if (wellPlaced) return;
                 existing.remove();
             }
@@ -508,25 +521,28 @@ function GM_registerMenuCommand() {
                 toggleComposerCrypt(host, btn);
             }, true);
             const anchor = findAttachAnchor(found);
-            const spanEl = anchor ? anchor.parentElement : null;
-            const cellEl = spanEl && spanEl.parentElement && spanEl.parentElement.tagName === 'DIV' && !spanEl.parentElement.className ? spanEl.parentElement : spanEl;
-            if (cellEl && cellEl.parentElement) {
-                let dropCell = cellEl;
-                let dropHost = dropCell.parentElement;
-                try {
-                    let hops = 0;
-                    while (dropHost && dropHost.getBoundingClientRect().width < dropCell.getBoundingClientRect().width * 1.3 && hops < 3) {
-                        dropCell = dropHost;
-                        dropHost = dropCell.parentElement;
-                        hops++;
-                    }
-                } catch (e) {}
-                const span = document.createElement('span');
-                span.className = spanEl ? spanEl.className : 'html-span';
-                span.appendChild(btn);
-                if (dropCell.nextSibling) dropHost.insertBefore(span, dropCell.nextSibling);
-                else dropHost.appendChild(span);
-            } else if (found.footer && found.footer.insertBefore) {
+            let placed = false;
+            if (anchor) {
+                const spanEl = anchor.parentElement;
+                const cellEl = spanEl && spanEl.tagName === 'SPAN' ? spanEl.parentElement : null;
+                const wrapEl = cellEl && cellEl.tagName === 'DIV' && !cellEl.className ? cellEl.parentElement : null;
+                const rowEl = wrapEl ? wrapEl.parentElement : null;
+                if (spanEl && cellEl && wrapEl && rowEl && rowEl.children.length >= 2) {
+                    const newWrap = wrapEl.cloneNode(false);
+                    while (newWrap.firstChild) newWrap.removeChild(newWrap.firstChild);
+                    const newCell = cellEl.cloneNode(false);
+                    while (newCell.firstChild) newCell.removeChild(newCell.firstChild);
+                    const newSpan = spanEl.cloneNode(false);
+                    while (newSpan.firstChild) newSpan.removeChild(newSpan.firstChild);
+                    newSpan.appendChild(btn);
+                    newCell.appendChild(newSpan);
+                    newWrap.appendChild(newCell);
+                    if (wrapEl.nextSibling) wrapEl.parentElement.insertBefore(newWrap, wrapEl.nextSibling);
+                    else rowEl.appendChild(newWrap);
+                    placed = true;
+                }
+            }
+            if (!placed && found.footer && found.footer.insertBefore) {
                 found.footer.insertBefore(btn, found.footer.firstChild);
             }
             if (anchor) {
@@ -544,29 +560,18 @@ function GM_registerMenuCommand() {
             const ref = composerCrypt.anchorRef;
             if (!btn || !ref || !document.body.contains(ref)) return;
             const span = btn.parentElement;
-            const refSpan = ref.parentElement;
-            if (span && refSpan) {
-                const rc = getComputedStyle(refSpan);
-                span.style.display = rc.display;
-                span.style.height = refSpan.getBoundingClientRect().height + 'px';
-                span.style.alignItems = 'center';
-                span.style.justifyContent = 'center';
-                span.style.position = 'static';
-                span.style.top = '';
-                span.style.margin = '0 2px';
-            }
-            window.requestAnimationFrame(() => {
-              try {
-                const rb = btn.getBoundingClientRect();
-                const rr = ref.getBoundingClientRect();
-                if (!rb || !rr) return;
+            const rb = btn.getBoundingClientRect();
+            const rr = ref.getBoundingClientRect();
+            if (span && rb && rr && rr.height > 0) {
                 const dy = Math.round(rr.y - rb.y);
-                if (span && Math.abs(dy) > 0) {
+                if (Math.abs(dy) > 0) {
                     span.style.position = 'relative';
                     span.style.top = dy + 'px';
+                } else if (span.style.top) {
+                    span.style.position = '';
+                    span.style.top = '';
                 }
-              } catch (e) {}
-            });
+            }
             composerCrypt.anchorColor = getComputedStyle(ref).color;
             if (composerCrypt.isEncrypted === false) btn.style.color = composerCrypt.anchorColor;
         } catch (e) {}
