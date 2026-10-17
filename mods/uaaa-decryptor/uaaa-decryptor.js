@@ -59,8 +59,6 @@ function GM_registerMenuCommand() {
         regex: /(UAAA[UA]+)/gi,
         key: '\x55\x41\x41\x41', // "UAAA"
         ignoreTags: new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'NOSCRIPT', 'CODE', 'PRE', 'CANVAS', 'SVG']),
-        inputSelector: 'input[type="text"], input[type="search"], input[type="url"], input[type="tel"], input:not([type]), textarea, div[contenteditable="true"], [role="textbox"][contenteditable="true"]',
-        inputIdleMs: 2000
     };
 
     const LOCK_PATH = 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z';
@@ -119,56 +117,6 @@ function GM_registerMenuCommand() {
                 display: block;
                 flex: none;
             }
-            .uaaa-input-btn-group {
-                position: absolute;
-                display: none;
-                align-items: center;
-                z-index: 999999;
-                opacity: 0;
-                transform: translateY(4px);
-                transition: opacity 0.15s ease, transform 0.15s ease;
-                font-family: inherit;
-            }
-            .uaaa-input-btn-group.visible {
-                display: inline-flex;
-                opacity: 1;
-                transform: translateY(0);
-            }
-            .uaaa-input-btn {
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                padding: 7px 12px 7px 10px;
-                border-radius: 8px;
-                cursor: pointer;
-                outline: none;
-                font-family: inherit;
-                font-size: 13px;
-                font-weight: 500;
-                line-height: 1.3;
-                white-space: nowrap;
-                color: #3b4a54;
-                background: #ffffff;
-                border: 1px solid rgba(11, 20, 26, 0.13);
-                box-shadow: 0 2px 10px rgba(11, 20, 26, 0.15);
-            }
-            .uaaa-input-btn svg {
-                width: 16px;
-                height: 16px;
-                fill: #00a884;
-                display: block;
-                flex: none;
-            }
-            .uaaa-input-btn:hover { background: #f0f2f5; }
-            .uaaa-input-btn.success svg { fill: #00a884; }
-            .uaaa-input-btn.error { color: #e56a5c; }
-            .uaaa-theme-dark .uaaa-input-btn {
-                color: #d1d7db;
-                background: #233138;
-                border-color: rgba(255, 255, 255, 0.08);
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
-            }
-
             .uaaa-attach-btn {
                 display: flex;
                 align-items: center;
@@ -392,24 +340,19 @@ function GM_registerMenuCommand() {
         kickPump();
     }
 
-    // --- Floating encrypt button near the chatbox (original extension behavior) ---
-    const inputStates = new WeakMap();
-    let suppressInputReset = false;
-
+    // --- Composer encrypt button: sits next to WhatsApp's own attach (media) button ---
     function getEditableHost(el) {
         if (!el) return null;
         if (el.isContentEditable) return el;
         return el.closest ? el.closest('[contenteditable="true"]') : null;
     }
 
-    // Reads the current text out of either a native form field or a contenteditable box.
     function getElText(el) {
         if (!el) return '';
         if (el.isContentEditable) return el.innerText || el.textContent || '';
         return el.value || '';
     }
 
-    // Writes text back in a way that framework-controlled fields (React, etc.) actually notice.
     function setElText(el, text) {
         el.focus();
         if (el.isContentEditable) {
@@ -431,195 +374,6 @@ function GM_registerMenuCommand() {
         }
     }
 
-    function setFieldContent(btn, locked, errMsg) {
-        try {
-            btn.innerHTML = svgIcon(locked ? LOCK_PATH : UNLOCK_PATH, 16) +
-                '<span>' + (errMsg ? 'Error' : (locked ? 'Encrypt' : 'Decrypt')) + '</span>';
-            btn.className = 'uaaa-input-btn' + (errMsg ? ' error' : (locked ? '' : ' success'));
-            const label = errMsg || (locked ? 'Encrypt this field with UAAA' : 'Restore original text');
-            btn.title = label;
-            btn.setAttribute('aria-label', label);
-        } catch (e) {}
-    }
-
-    function isEligibleInput(el) {
-        if (!el) return false;
-        const host = getEditableHost(el);
-        if (host && host.parentElement && host.parentElement.querySelector('[data-uaaa-encrypt]')) return false;
-        if (host) return !host.readOnly && !host.disabled;
-        return el.matches && el.matches(CONFIG.inputSelector) && !el.readOnly && !el.disabled;
-    }
-
-    function getOrCreateState(el) {
-        const host = getEditableHost(el) || el;
-        let state = inputStates.get(host);
-        if (state) return state;
-
-        const container = document.createElement('span');
-        container.className = 'uaaa-input-btn-group';
-        container.contentEditable = "false";
-
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        setFieldContent(btn, true);
-        container.appendChild(btn);
-        document.body.appendChild(container);
-
-        state = { plaintext: '', isEncrypted: false, btnGroup: container, btn, timer: null, anchor: host, preventHide: false };
-        inputStates.set(host, state);
-
-        btn.addEventListener('pointerdown', () => {
-            state.preventHide = true;
-        });
-
-        btn.addEventListener('click', (e) => {
-          try {
-            e.preventDefault();
-            e.stopPropagation();
-            state.preventHide = false;
-
-            if (!state.isEncrypted) {
-                const plaintext = getElText(host);
-                if (!plaintext || !plaintext.trim()) return;
-                try {
-                    if (typeof _C !== 'function') throw new Error("Core API (_C) missing");
-                    const cipher = _C(plaintext, CONFIG.key, true);
-                    state.plaintext = plaintext;
-                    suppressInputReset = true;
-                    try {
-                        setElText(host, cipher);
-                    } finally {
-                        suppressInputReset = false;
-                    }
-                    state.isEncrypted = true;
-                    setFieldContent(btn, false);
-                } catch (err) {
-                    setFieldContent(btn, true, err.message);
-                }
-            } else {
-                suppressInputReset = true;
-                try {
-                    setElText(host, state.plaintext);
-                } finally {
-                    suppressInputReset = false;
-                }
-                state.isEncrypted = false;
-                setFieldContent(btn, true);
-            }
-            try { host.focus(); } catch (err) {}
-          } catch (err) {
-            console.warn('[UAAA] button skipped:', err && err.message);
-          }
-        });
-
-        return state;
-    }
-
-    function positionButton(state) {
-        const el = state.anchor;
-        if (!el || !document.body.contains(el)) return;
-
-        const rect = el.getBoundingClientRect();
-        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-
-        state.btnGroup.style.visibility = 'hidden';
-        state.btnGroup.classList.add('visible');
-        state.btnGroup.style.display = 'inline-flex';
-        const width = state.btnGroup.offsetWidth;
-        const height = state.btnGroup.offsetHeight;
-
-        let left = rect.right + scrollX - width - 4;
-        if (left < scrollX + 8) left = rect.left + scrollX;
-        let top = rect.top + scrollY - height - 8;
-        if (top < scrollY + 8) top = rect.bottom + scrollY + 8;
-
-        state.btnGroup.style.left = left + 'px';
-        state.btnGroup.style.top = top + 'px';
-        state.btnGroup.style.visibility = '';
-
-        try {
-            let probe = el;
-            let dark = false;
-            while (probe && probe !== document.documentElement) {
-                const bg = getComputedStyle(probe).backgroundColor;
-                const m = bg.match(/rgba?\((\d+)[\s,]+(\d+)[\s,]+(\d+)(?:[\s,]+([\d.]+))?\)/);
-                if (m && (m[4] === undefined || parseFloat(m[4]) > 0.5) && !(m[1] === '0' && m[2] === '0' && m[3] === '0' && m[4] !== undefined)) {
-                    dark = (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) < 110;
-                    break;
-                }
-                probe = probe.parentElement;
-            }
-            state.btnGroup.classList.toggle('uaaa-theme-dark', dark);
-        } catch (e) {}
-    }
-
-    function showButton(state, el) {
-        const host = getEditableHost(el) || el;
-        if (!getElText(host)) {
-            hideButton(state);
-            return;
-        }
-        state.anchor = host;
-        positionButton(state);
-        state.btnGroup.classList.add('visible');
-    }
-
-    function hideButton(state) {
-        state.btnGroup.classList.remove('visible');
-        state.btnGroup.style.display = 'none';
-    }
-
-    document.addEventListener('input', (e) => {
-      try {
-        if (suppressInputReset) return;
-        if (!isEligibleInput(e.target)) return;
-        const el = getEditableHost(e.target) || e.target;
-        const state = getOrCreateState(el);
-
-        clearTimeout(state.timer);
-        hideButton(state);
-
-        if (state.isEncrypted) {
-            state.isEncrypted = false;
-            state.plaintext = '';
-            setFieldContent(state.btn, true);
-        }
-
-        state.timer = setTimeout(() => showButton(state, el), CONFIG.inputIdleMs);
-      } catch (err) {
-        console.warn('[UAAA] input skipped:', err && err.message);
-      }
-    }, true);
-
-    document.addEventListener('focusin', (e) => {
-      try {
-        if (suppressInputReset) return;
-        if (!isEligibleInput(e.target)) return;
-        const el = getEditableHost(e.target) || e.target;
-        const state = getOrCreateState(el);
-        clearTimeout(state.timer);
-        state.timer = setTimeout(() => showButton(state, el), CONFIG.inputIdleMs);
-      } catch (err) {
-        console.warn('[UAAA] focus skipped:', err && err.message);
-      }
-    }, true);
-
-    document.addEventListener('focusout', (e) => {
-      try {
-        if (!isEligibleInput(e.target)) return;
-        const el = getEditableHost(e.target) || e.target;
-        const state = inputStates.get(el);
-        if (!state) return;
-        if (state.preventHide) return;
-        clearTimeout(state.timer);
-        hideButton(state);
-      } catch (err) {
-        console.warn('[UAAA] blur skipped:', err && err.message);
-      }
-    }, true);
-
-    // --- Composer encrypt button: sits next to WhatsApp's own attach (media) button ---
     const composerCrypt = { plaintext: '', isEncrypted: false, btn: null };
 
     function setComposerIcon(btn, locked, errMsg) {
@@ -671,7 +425,7 @@ function GM_registerMenuCommand() {
             const candidates = f.querySelectorAll('button, [role="button"]');
             for (const c of candidates) {
                 const label = (c.getAttribute('aria-label') || c.getAttribute('title') || '') + ' ' + (c.dataset.testid || c.getAttribute('data-testid') || '');
-                if (/attach|prilo|media|upload/i.test(label)) return c;
+                if (/attach|prilo|pripo|media|upload/i.test(label)) return c;
             }
             let best = null;
             for (const c of candidates) {
@@ -734,7 +488,10 @@ function GM_registerMenuCommand() {
             const existing = document.querySelector('[data-uaaa-encrypt]');
             const found = findComposer();
             if (existing) {
-                if (found && existing === found.footer.querySelector('[data-uaaa-encrypt]')) return;
+                const exSpan = existing.parentElement;
+                const wellPlaced = exSpan && exSpan.tagName === 'SPAN' && exSpan.className && String(exSpan.className).indexOf('html-span') !== -1
+                    && exSpan.parentElement && exSpan.parentElement.className && String(exSpan.parentElement.className).indexOf('html-span') === -1;
+                if (wellPlaced) return;
                 existing.remove();
             }
             if (!found) return;
@@ -749,9 +506,24 @@ function GM_registerMenuCommand() {
                 toggleComposerCrypt(host, btn);
             }, true);
             const anchor = findAttachAnchor(found);
-            if (anchor && anchor.parentNode) {
-                if (anchor.nextSibling) anchor.parentNode.insertBefore(btn, anchor.nextSibling);
-                else anchor.parentNode.appendChild(btn);
+            const spanEl = anchor ? anchor.parentElement : null;
+            const cellEl = spanEl && spanEl.parentElement && spanEl.parentElement.tagName === 'DIV' && !spanEl.parentElement.className ? spanEl.parentElement : spanEl;
+            if (cellEl && cellEl.parentElement) {
+                let dropCell = cellEl;
+                let dropHost = dropCell.parentElement;
+                try {
+                    let hops = 0;
+                    while (dropHost && dropHost.getBoundingClientRect().width < dropCell.getBoundingClientRect().width * 1.3 && hops < 3) {
+                        dropCell = dropHost;
+                        dropHost = dropCell.parentElement;
+                        hops++;
+                    }
+                } catch (e) {}
+                const span = document.createElement('span');
+                span.className = spanEl ? spanEl.className : 'html-span';
+                span.appendChild(btn);
+                if (dropCell.nextSibling) dropHost.insertBefore(span, dropCell.nextSibling);
+                else dropHost.appendChild(span);
             } else if (found.footer && found.footer.insertBefore) {
                 found.footer.insertBefore(btn, found.footer.firstChild);
             }
