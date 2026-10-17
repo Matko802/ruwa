@@ -680,7 +680,7 @@ function GM_registerMenuCommand() {
                 if (!label) continue;
                 if (c.contains(editable) || editable.contains(c)) continue;
                 if (c.compareDocumentPosition(editable) & Node.DOCUMENT_POSITION_FOLLOWING) {
-                    best = c;
+                    if (!best) best = c;
                 }
             }
             if (best) return best;
