@@ -131,11 +131,10 @@ function GM_registerMenuCommand() {
                 cursor: pointer;
                 outline: none;
                 background: transparent;
-                color: #8696a0;
-                opacity: 0.9;
+
                 font-family: inherit;
             }
-            .uaaa-attach-btn:hover { background: rgba(134, 150, 160, 0.15); opacity: 1; }
+            .uaaa-attach-btn:hover { background: rgba(134, 150, 160, 0.15); }
             .uaaa-attach-btn svg {
                 width: 24px;
                 height: 24px;
@@ -144,8 +143,8 @@ function GM_registerMenuCommand() {
                 flex: none;
                 pointer-events: none;
             }
-            .uaaa-attach-btn.success { color: #00a884; opacity: 1; }
-            .uaaa-attach-btn.error { color: #e56a5c; opacity: 1; }
+            .uaaa-attach-btn.success { color: #00a884; }
+            .uaaa-attach-btn.error { color: #e56a5c; }
         `;
         document.head.appendChild(style);
     }
@@ -374,7 +373,7 @@ function GM_registerMenuCommand() {
         }
     }
 
-    const composerCrypt = { plaintext: '', isEncrypted: false, btn: null };
+    const composerCrypt = { plaintext: '', isEncrypted: false, btn: null, anchorRef: null, anchorColor: '' };
 
     function setComposerIcon(btn, locked, errMsg) {
         try {
@@ -383,6 +382,7 @@ function GM_registerMenuCommand() {
             btn.setAttribute('title', errMsg || (locked ? 'Encrypt with UAAA' : 'Restore original text'));
             btn.className = 'uaaa-attach-btn' + (errMsg ? ' error' : (locked ? '' : ' success'));
             btn.setAttribute('data-uaaa-encrypt', '1');
+            btn.style.color = locked ? (composerCrypt.anchorColor || '') : '';
         } catch (e) {}
     }
 
@@ -447,6 +447,8 @@ function GM_registerMenuCommand() {
             const btn = document.querySelector('[data-uaaa-encrypt]');
             if (!btn || !document.body.contains(btn)) {
                 ensureEncryptButton();
+            } else {
+                alignEncryptIcon();
             }
         } catch (e) {}
     }
@@ -527,9 +529,47 @@ function GM_registerMenuCommand() {
             } else if (found.footer && found.footer.insertBefore) {
                 found.footer.insertBefore(btn, found.footer.firstChild);
             }
+            if (anchor) {
+                composerCrypt.anchorRef = anchor;
+                alignEncryptIcon();
+            }
         } catch (err) {
             console.warn('[UAAA] encrypt button skipped:', err && err.message);
         }
+    }
+
+    function alignEncryptIcon() {
+        try {
+            const btn = document.querySelector('[data-uaaa-encrypt]');
+            const ref = composerCrypt.anchorRef;
+            if (!btn || !ref || !document.body.contains(ref)) return;
+            const span = btn.parentElement;
+            const refSpan = ref.parentElement;
+            if (span && refSpan) {
+                const rc = getComputedStyle(refSpan);
+                span.style.display = rc.display;
+                span.style.height = refSpan.getBoundingClientRect().height + 'px';
+                span.style.alignItems = 'center';
+                span.style.justifyContent = 'center';
+                span.style.position = 'static';
+                span.style.top = '';
+                span.style.margin = '0 2px';
+            }
+            window.requestAnimationFrame(() => {
+              try {
+                const rb = btn.getBoundingClientRect();
+                const rr = ref.getBoundingClientRect();
+                if (!rb || !rr) return;
+                const dy = Math.round(rr.y - rb.y);
+                if (span && Math.abs(dy) > 0) {
+                    span.style.position = 'relative';
+                    span.style.top = dy + 'px';
+                }
+              } catch (e) {}
+            });
+            composerCrypt.anchorColor = getComputedStyle(ref).color;
+            if (composerCrypt.isEncrypted === false) btn.style.color = composerCrypt.anchorColor;
+        } catch (e) {}
     }
 
     document.addEventListener('input', function (e) {
