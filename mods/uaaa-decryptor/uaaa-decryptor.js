@@ -641,11 +641,22 @@ function GM_registerMenuCommand() {
         } catch (e) {}
     }
 
+    function composerRowOf(editable) {
+        let node = editable;
+        for (let i = 0; i < 8 && node && node !== document.body; i++) {
+            const p = node.parentElement;
+            if (!p) break;
+            if (p.querySelector('button, [role="button"]')) return p;
+            node = p;
+        }
+        return null;
+    }
+
     function findComposer() {
         try {
             const editable = document.querySelector('footer div[contenteditable="true"], footer [role="textbox"][contenteditable="true"], div[contenteditable="true"][role="textbox"]');
             if (!editable) return null;
-            const footer = (editable.closest ? editable.closest('footer') : null) || editable.parentElement;
+            const footer = (editable.closest ? editable.closest('footer') : null) || composerRowOf(editable);
             if (!footer) return null;
             return { editable, footer };
         } catch (e) {
