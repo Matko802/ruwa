@@ -71,11 +71,7 @@
   $('reload').onclick = () => window.ruwaBar.reload();
   $('settings').onclick = () => window.ruwaBar.toggleSettings();
   window.ruwaBar.onTitle((t) => {
-    const raw = t && t.trim() ? t : 'Ruwa';
-    $('title').textContent = raw
-      .replace(/WHATSAPP/g, 'RUWA')
-      .replace(/WhatsApp/g, 'Ruwa')
-      .replace(/whatsapp/g, 'ruwa');
+    $('title').textContent = t && t.trim() ? t : 'Ruwa';
   });
   window.ruwaBar.onPanel((open) => {
     document.body.classList.toggle('panel-open', !!open);
