@@ -667,17 +667,23 @@ function GM_registerMenuCommand() {
     function findAttachAnchor(found) {
         try {
             const f = found.footer;
+            const editable = found.editable;
             const candidates = f.querySelectorAll('button, [role="button"]');
             for (const c of candidates) {
                 const label = (c.getAttribute('aria-label') || c.getAttribute('title') || '') + ' ' + (c.dataset.testid || c.getAttribute('data-testid') || '');
                 if (/attach|prilo|media|upload/i.test(label)) return c;
             }
-        } catch (e) {}
-        try {
-            const editable = found.editable;
-            if (editable && editable.parentElement) {
-                return editable.parentElement.querySelector('button, [role="button"]');
+            let best = null;
+            for (const c of candidates) {
+                if (c === editable) continue;
+                const label = c.getAttribute('aria-label') || c.getAttribute('title') || '';
+                if (!label) continue;
+                if (c.contains(editable) || editable.contains(c)) continue;
+                if (c.compareDocumentPosition(editable) & Node.DOCUMENT_POSITION_FOLLOWING) {
+                    best = c;
+                }
             }
+            if (best) return best;
         } catch (e) {}
         return null;
     }
@@ -746,8 +752,8 @@ function GM_registerMenuCommand() {
             if (anchor && anchor.parentNode) {
                 if (anchor.nextSibling) anchor.parentNode.insertBefore(btn, anchor.nextSibling);
                 else anchor.parentNode.appendChild(btn);
-            } else if (host.parentNode) {
-                host.parentNode.insertBefore(btn, host);
+            } else if (found.footer && found.footer.insertBefore) {
+                found.footer.insertBefore(btn, found.footer.firstChild);
             }
         } catch (err) {
             console.warn('[UAAA] encrypt button skipped:', err && err.message);
