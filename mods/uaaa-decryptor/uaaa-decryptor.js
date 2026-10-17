@@ -124,9 +124,49 @@ function GM_registerMenuCommand() {
                 display: none;
                 align-items: center;
                 z-index: 999999;
+                opacity: 0;
+                transform: translateY(4px);
+                transition: opacity 0.15s ease, transform 0.15s ease;
+                font-family: inherit;
             }
             .uaaa-input-btn-group.visible {
                 display: inline-flex;
+                opacity: 1;
+                transform: translateY(0);
+            }
+            .uaaa-input-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 7px 12px 7px 10px;
+                border-radius: 8px;
+                cursor: pointer;
+                outline: none;
+                font-family: inherit;
+                font-size: 13px;
+                font-weight: 500;
+                line-height: 1.3;
+                white-space: nowrap;
+                color: #3b4a54;
+                background: #ffffff;
+                border: 1px solid rgba(11, 20, 26, 0.13);
+                box-shadow: 0 2px 10px rgba(11, 20, 26, 0.15);
+            }
+            .uaaa-input-btn svg {
+                width: 16px;
+                height: 16px;
+                fill: #00a884;
+                display: block;
+                flex: none;
+            }
+            .uaaa-input-btn:hover { background: #f0f2f5; }
+            .uaaa-input-btn.success svg { fill: #00a884; }
+            .uaaa-input-btn.error { color: #e56a5c; }
+            .uaaa-theme-dark .uaaa-input-btn {
+                color: #d1d7db;
+                background: #233138;
+                border-color: rgba(255, 255, 255, 0.08);
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
             }
 
             .uaaa-btn.success { color: #00e676; }
@@ -376,9 +416,9 @@ function GM_registerMenuCommand() {
 
     function setFieldContent(btn, locked, errMsg) {
         try {
-            btn.innerHTML = svgIcon(locked ? LOCK_PATH : UNLOCK_PATH, 18) +
+            btn.innerHTML = svgIcon(locked ? LOCK_PATH : UNLOCK_PATH, 16) +
                 '<span>' + (errMsg ? 'Error' : (locked ? 'Encrypt' : 'Decrypt')) + '</span>';
-            btn.className = 'uaaa-btn' + (errMsg ? ' error' : (locked ? '' : ' success'));
+            btn.className = 'uaaa-input-btn' + (errMsg ? ' error' : (locked ? '' : ' success'));
             const label = errMsg || (locked ? 'Encrypt this field with UAAA' : 'Restore original text');
             btn.title = label;
             btn.setAttribute('aria-label', label);
@@ -398,7 +438,7 @@ function GM_registerMenuCommand() {
         if (state) return state;
 
         const container = document.createElement('span');
-        container.className = 'uaaa-btn-group uaaa-input-btn-group';
+        container.className = 'uaaa-input-btn-group';
         container.contentEditable = "false";
 
         const btn = document.createElement('button');
@@ -471,12 +511,29 @@ function GM_registerMenuCommand() {
         const width = state.btnGroup.offsetWidth;
         const height = state.btnGroup.offsetHeight;
 
-        const left = Math.min(rect.right + scrollX - width, rect.left + scrollX + 10);
-        const top = Math.max(rect.top + scrollY - height - 6, scrollY + 6);
+        let left = rect.right + scrollX - width - 4;
+        if (left < scrollX + 8) left = rect.left + scrollX;
+        let top = rect.top + scrollY - height - 8;
+        if (top < scrollY + 8) top = rect.bottom + scrollY + 8;
 
-        state.btnGroup.style.left = `${Math.max(left, scrollX + 6)}px`;
-        state.btnGroup.style.top = `${top}px`;
-        state.btnGroup.style.visibility = 'visible';
+        state.btnGroup.style.left = left + 'px';
+        state.btnGroup.style.top = top + 'px';
+        state.btnGroup.style.visibility = '';
+
+        try {
+            let probe = el;
+            let dark = false;
+            while (probe && probe !== document.documentElement) {
+                const bg = getComputedStyle(probe).backgroundColor;
+                const m = bg.match(/rgba?\((\d+)[\s,]+(\d+)[\s,]+(\d+)(?:[\s,]+([\d.]+))?\)/);
+                if (m && (m[4] === undefined || parseFloat(m[4]) > 0.5) && !(m[1] === '0' && m[2] === '0' && m[3] === '0' && m[4] !== undefined)) {
+                    dark = (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) < 110;
+                    break;
+                }
+                probe = probe.parentElement;
+            }
+            state.btnGroup.classList.toggle('uaaa-theme-dark', dark);
+        } catch (e) {}
     }
 
     function showButton(state, el) {

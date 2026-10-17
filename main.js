@@ -595,6 +595,12 @@ function updateTitle(text) {
       topbarView.webContents.send('bar:title', text || '');
     } catch (_) {}
   }
+  if (text && mainView) {
+    try {
+      const fixed = String(text).replace(/WHATSAPP/g, 'RUWA').replace(/WhatsApp/g, 'Ruwa').replace(/whatsapp/g, 'ruwa');
+      if (fixed !== text) mainView.webContents.executeJavaScript(`{ var t = document.title; var n = t.replace(/WHATSAPP/g,'RUWA').replace(/WhatsApp/g,'Ruwa').replace(/whatsapp/g,'ruwa'); if (n !== t) document.title = n; n; }`).catch(() => {});
+    } catch (_) {}
+  }
 }
 
 function createTray() {
