@@ -169,18 +169,35 @@ function GM_registerMenuCommand() {
                 box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
             }
 
-            .uaaa-btn.success { color: #00e676; }
-            .uaaa-btn.error { color: #ff5252; }
-            [data-uaaa-encrypt] {
-                background-color: #00a884 !important;
-                color: #ffffff !important;
+            .uaaa-attach-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 40px;
+                height: 40px;
+                padding: 0;
+                margin: 0 2px;
+                flex: none;
+                border: 0;
+                border-radius: 50%;
+                cursor: pointer;
+                outline: none;
+                background: transparent;
+                color: #8696a0;
+                opacity: 0.9;
+                font-family: inherit;
             }
-            [data-uaaa-encrypt] svg {
-                width: 24px !important;
-                height: 24px !important;
+            .uaaa-attach-btn:hover { background: rgba(134, 150, 160, 0.15); opacity: 1; }
+            .uaaa-attach-btn svg {
+                width: 24px;
+                height: 24px;
                 fill: currentColor;
                 display: block;
+                flex: none;
+                pointer-events: none;
             }
+            .uaaa-attach-btn.success { color: #00a884; opacity: 1; }
+            .uaaa-attach-btn.error { color: #e56a5c; opacity: 1; }
         `;
         document.head.appendChild(style);
     }
@@ -428,6 +445,7 @@ function GM_registerMenuCommand() {
     function isEligibleInput(el) {
         if (!el) return false;
         const host = getEditableHost(el);
+        if (host && host.parentElement && host.parentElement.querySelector('[data-uaaa-encrypt]')) return false;
         if (host) return !host.readOnly && !host.disabled;
         return el.matches && el.matches(CONFIG.inputSelector) && !el.readOnly && !el.disabled;
     }
@@ -601,10 +619,145 @@ function GM_registerMenuCommand() {
       }
     }, true);
 
+    // --- Composer encrypt button: sits next to WhatsApp's own attach (media) button ---
+    const composerCrypt = { plaintext: '', isEncrypted: false, btn: null };
+
+    function setComposerIcon(btn, locked, errMsg) {
+        try {
+            btn.innerHTML = svgIcon(locked ? LOCK_PATH : UNLOCK_PATH, 24);
+            btn.setAttribute('aria-label', errMsg || (locked ? 'Encrypt with UAAA' : 'Restore original text'));
+            btn.setAttribute('title', errMsg || (locked ? 'Encrypt with UAAA' : 'Restore original text'));
+            btn.className = 'uaaa-attach-btn' + (errMsg ? ' error' : (locked ? '' : ' success'));
+            btn.setAttribute('data-uaaa-encrypt', '1');
+        } catch (e) {}
+    }
+
+    function resetComposerCrypt() {
+        composerCrypt.plaintext = '';
+        composerCrypt.isEncrypted = false;
+        try {
+            const b = document.querySelector('[data-uaaa-encrypt]');
+            if (b) setComposerIcon(b, true);
+        } catch (e) {}
+    }
+
+    function findComposer() {
+        try {
+            const editable = document.querySelector('footer div[contenteditable="true"], footer [role="textbox"][contenteditable="true"], div[contenteditable="true"][role="textbox"]');
+            if (!editable) return null;
+            const footer = (editable.closest ? editable.closest('footer') : null) || editable.parentElement;
+            if (!footer) return null;
+            return { editable, footer };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function findAttachAnchor(found) {
+        try {
+            const f = found.footer;
+            const candidates = f.querySelectorAll('button, [role="button"]');
+            for (const c of candidates) {
+                const label = (c.getAttribute('aria-label') || c.getAttribute('title') || '') + ' ' + (c.dataset.testid || c.getAttribute('data-testid') || '');
+                if (/attach|prilo|media|upload/i.test(label)) return c;
+            }
+        } catch (e) {}
+        try {
+            const editable = found.editable;
+            if (editable && editable.parentElement) {
+                return editable.parentElement.querySelector('button, [role="button"]');
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    function validateEncryptPlacement() {
+        try {
+            const btn = document.querySelector('[data-uaaa-encrypt]');
+            if (!btn || !document.body.contains(btn)) {
+                ensureEncryptButton();
+            }
+        } catch (e) {}
+    }
+
+    function toggleComposerCrypt(editable, btn) {
+        try {
+            const host = getEditableHost(editable) || editable;
+            if (!composerCrypt.isEncrypted) {
+                const plaintext = getElText(host);
+                if (!plaintext || !plaintext.trim()) return;
+                if (typeof _C !== 'function') throw new Error('Core API (_C) missing');
+                const cipher = _C(plaintext, CONFIG.key, true);
+                composerCrypt.plaintext = plaintext;
+                suppressInputReset = true;
+                try {
+                    setElText(host, cipher);
+                } finally {
+                    suppressInputReset = false;
+                }
+                composerCrypt.isEncrypted = true;
+                setComposerIcon(btn, false);
+            } else {
+                suppressInputReset = true;
+                try {
+                    setElText(host, composerCrypt.plaintext);
+                } finally {
+                    suppressInputReset = false;
+                }
+                resetComposerCrypt();
+            }
+            try { host.focus(); } catch (e) {}
+        } catch (err) {
+            console.warn('[UAAA] composer crypt skipped:', err && err.message);
+        }
+    }
+
+    function ensureEncryptButton() {
+        try {
+            const existing = document.querySelector('[data-uaaa-encrypt]');
+            const found = findComposer();
+            if (existing) {
+                if (found && existing === found.footer.querySelector('[data-uaaa-encrypt]')) return;
+                existing.remove();
+            }
+            if (!found) return;
+            const host = getEditableHost(found.editable) || found.editable;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            setComposerIcon(btn, true);
+            composerCrypt.btn = btn;
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleComposerCrypt(host, btn);
+            }, true);
+            const anchor = findAttachAnchor(found);
+            if (anchor && anchor.parentNode) {
+                if (anchor.nextSibling) anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+                else anchor.parentNode.appendChild(btn);
+            } else if (host.parentNode) {
+                host.parentNode.insertBefore(btn, host);
+            }
+        } catch (err) {
+            console.warn('[UAAA] encrypt button skipped:', err && err.message);
+        }
+    }
+
+    document.addEventListener('input', function (e) {
+        try {
+            if (suppressInputReset) return;
+            if (getEditableHost(e.target)) resetComposerCrypt();
+        } catch (err) {}
+    }, true);
+
 
     // --- Initialization & Observation ---
     injectStyles();
     enqueueNode(document.body);
+    ensureEncryptButton();
+    try {
+        setInterval(validateEncryptPlacement, 2500);
+    } catch (e) {}
 
     const observer = new MutationObserver((mutations) => {
       try {
@@ -629,6 +782,7 @@ function GM_registerMenuCommand() {
                 }
             }
         }
+        ensureEncryptButton();
       } catch (e) {
         console.warn('[UAAA] observer skipped batch:', e && e.message);
       }

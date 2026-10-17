@@ -710,7 +710,7 @@ function createWindow(startHidden) {
 
   const toggleTools = (wc) => {
     if (wc.isDevToolsOpened()) wc.closeDevTools();
-    else wc.openDevTools({ mode: 'detach' });
+    else wc.openDevTools({ mode: 'bottom' });
   };
   const devtoolsKeys = (wc) => (e, input) => {
     if (input.type !== 'keyDown') return;
