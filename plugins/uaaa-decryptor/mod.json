@@ -1,0 +1,8 @@
+{
+  "id": "uaaa-decryptor",
+  "name": "UAAA Decryptor",
+  "version": "0.1.2",
+  "description": "Decrypt UAAA-encrypted messages right in chat and encrypt your replies before sending. Made for fun, not secure.",
+  "homepage": "https://github.com/Matko802/UAAAEncryption",
+  "files": ["uaaa-core.js", "uaaa-decryptor.js"]
+}
