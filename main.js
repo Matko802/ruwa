@@ -402,7 +402,7 @@ function desktopEntry(exec, minimized) {
   const execLine = minimized ? `${exec} --minimized` : exec;
   return (
     '[Desktop Entry]\nType=Application\nName=Ruwa\nGenericName=WhatsApp Client\n' +
-    'Comment=Lightweight WhatsApp desktop client\n' +
+    'Comment=Lightweight Linux WhatsApp desktop client\n' +
     `TryExec=${exec}\nExec=${execLine} \nIcon=ruwa\nTerminal=false\n` +
     'Categories=Network;InstantMessaging;\nStartupWMClass=Ruwa\nStartupNotify=true\n' +
     'X-GNOME-Autostart-enabled=true\n'
@@ -876,7 +876,7 @@ function registerIpc() {
 
 function printUsage() {
   process.stdout.write(
-    'ruwa — lightweight WhatsApp desktop client\n\nUsage: ruwa [options]\n\nOptions:\n' +
+    'ruwa — \n\nUsage: ruwa [options]\n\nOptions:\n' +
       '  --show        Focus the running window (default for second instance)\n' +
       '  --quit        Quit the running instance and exit\n' +
       '  --minimized   Start minimized to tray (no window)\n' +
