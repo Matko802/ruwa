@@ -11,7 +11,7 @@
 <nav id="tabs" role="tablist" aria-label="Settings sections">
   <button role="tab" data-tab="general" class="active" aria-selected="true">General</button>
   <button role="tab" data-tab="appearance" aria-selected="false">Appearance</button>
-  <button role="tab" data-tab="mods" aria-selected="false">Mods</button>
+  <button role="tab" data-tab="plugins" aria-selected="false">plugins</button>
   <button role="tab" data-tab="system" aria-selected="false">System</button>
   <div id="tab-indicator"></div>
 </nav>
@@ -39,17 +39,15 @@
     <textarea id="css" spellcheck="false"></textarea>
     <button id="saveCss" class="primary">Save custom CSS</button>
   </section>
-  <section data-page="mods" hidden>
-    <div class="card caption">Premade mods</div>
-    <p class="hint">Bundled mods. They run inside WhatsApp Web and take effect on next launch.</p>
-    <div id="mods"></div>
+  <section data-page="plugins" hidden>
+    <div class="card caption">Plugins</div>
+    <div id="plugins"></div>
   </section>
   <section data-page="system" hidden>
     <div class="card caption">Startup</div>
     <label class="row"><span>Start on login</span><input type="checkbox" id="autostart" /></label>
     <div class="card caption">Account</div>
-    <button id="logout" class="danger">Log out (clear site data)</button>
-    <p class="hint">Upgraded from Ruwa ≤ 0.4? Link your device again once — each engine keeps its own login.</p>
+    <button id="logout" class="danger">Log Out/button>
     <div class="card caption">About</div>
     <div class="card"><span id="version"></span></div>
   </section>

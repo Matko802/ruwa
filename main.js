@@ -94,7 +94,7 @@ function defaultConfig() {
     close_to_tray: true,
     start_minimized: false,
     display: 'auto',
-    mods_enabled: [],
+    plugins_enabled: [],
     engine: defaultEngine(),
   };
 }
@@ -159,8 +159,8 @@ function legacyConfigFromUserJs(content) {
   if (v !== undefined) { cfg.start_minimized = v; found = true; }
   const d = strPref('ruwa.display.backend');
   if (d !== undefined) { cfg.display = DISPLAYS.includes(d) ? d : 'auto'; found = true; }
-  const m = strPref('ruwa.mods.enabled');
-  if (m !== undefined) { cfg.mods_enabled = sanitizeModIds(m.split(/[\s,]+/)); found = true; }
+  const m = strPref('ruwa.plugins.enabled');
+  if (m !== undefined) { cfg.plugins_enabled = sanitizeModIds(m.split(/[\s,]+/)); found = true; }
   return found ? cfg : null;
 }
 
@@ -172,7 +172,7 @@ function readConfig() {
     if (typeof parsed.close_to_tray === 'boolean') cfg.close_to_tray = parsed.close_to_tray;
     if (typeof parsed.start_minimized === 'boolean') cfg.start_minimized = parsed.start_minimized;
     if (DISPLAYS.includes(parsed.display)) cfg.display = parsed.display;
-    if (Array.isArray(parsed.mods_enabled)) cfg.mods_enabled = sanitizeModIds(parsed.mods_enabled);
+    if (Array.isArray(parsed.plugins_enabled)) cfg.plugins_enabled = sanitizeModIds(parsed.plugins_enabled);
     cfg.engine = sanitizeEngine(parsed.engine);
     return cfg;
   } catch (e) {
@@ -197,7 +197,7 @@ function writeConfig(cfg) {
   clean.close_to_tray = !!cfg.close_to_tray;
   clean.start_minimized = !!cfg.start_minimized;
   clean.display = DISPLAYS.includes(cfg.display) ? cfg.display : 'auto';
-  clean.mods_enabled = sanitizeModIds(cfg.mods_enabled);
+  clean.plugins_enabled = sanitizeModIds(cfg.plugins_enabled);
   clean.engine = sanitizeEngine(cfg.engine);
   fs.mkdirSync(configDir(), { recursive: true });
   fs.writeFileSync(configPath(), JSON.stringify(clean, null, 2) + '\n');
@@ -301,12 +301,12 @@ function appDir() {
   return app.getAppPath();
 }
 
-function modsDir() {
+function pluginsDir() {
   const override = process.env.RUWA_DIR;
-  if (override && override.trim()) return path.join(override, 'mods');
-  const local = path.join(appDir(), 'mods');
+  if (override && override.trim()) return path.join(override, 'plugins');
+  const local = path.join(appDir(), 'plugins');
   if (fs.existsSync(local)) return local;
-  const packaged = path.join(path.dirname(appDir()), 'mods');
+  const packaged = path.join(path.dirname(appDir()), 'plugins');
   if (fs.existsSync(packaged)) return packaged;
   return local;
 }
@@ -326,8 +326,8 @@ function baseCss() {
   return '';
 }
 
-function listMods() {
-  const dir = modsDir();
+function listplugins() {
+  const dir = pluginsDir();
   const out = [];
   let entries = [];
   try {
@@ -354,8 +354,8 @@ function listMods() {
   return out;
 }
 
-function buildModsRegistry(enabled) {
-  const dir = modsDir();
+function buildpluginsRegistry(enabled) {
+  const dir = pluginsDir();
   const chunks = [];
   const ids = [];
   for (const id of sanitizeModIds(enabled)) {
@@ -382,10 +382,10 @@ function buildModsRegistry(enabled) {
     '\n;(function(){var enabled=' + JSON.stringify(ids) + ',seen={};' +
     'for(var i=0;i<enabled.length;i++){var id=enabled[i];' +
     'if(!id||seen[id])continue;seen[id]=true;' +
-    'var fn=(typeof RUWA_MODS!=="undefined")?RUWA_MODS[id]:null;' +
+    'var fn=(typeof RUWA_plugins!=="undefined")?RUWA_plugins[id]:null;' +
     'if(typeof fn!=="function")continue;' +
-    'try{fn();}catch(e){console.warn("[ruwa-mods] mod failed: "+id,e);}}})();';
-  return `var RUWA_MOD_IDS=${JSON.stringify(ids)};\nvar RUWA_MODS={\n${chunks.join(',\n')}\n};${boot}`;
+    'try{fn();}catch(e){console.warn("[ruwa-plugins] mod failed: "+id,e);}}})();';
+  return `var RUWA_MOD_IDS=${JSON.stringify(ids)};\nvar RUWA_plugins={\n${chunks.join(',\n')}\n};${boot}`;
 }
 
 function autostartPath() {
@@ -782,9 +782,9 @@ function createWindow(startHidden) {
     if (css.trim()) {
       mainView.webContents.insertCSS(css).catch(() => {});
     }
-    const enabled = readConfig().mods_enabled;
-    vlog(`injecting ${enabled.length} mods into ${url}`);
-    const js = buildModsRegistry(enabled);
+    const enabled = readConfig().plugins_enabled;
+    vlog(`injecting ${enabled.length} plugins into ${url}`);
+    const js = buildpluginsRegistry(enabled);
     mainView.webContents.executeJavaScript(js, true).catch(() => {});
   });
 
@@ -836,10 +836,10 @@ function registerIpc() {
     writeCustomCss(String(css || ''));
     return true;
   });
-  ipcMain.handle('panel:list-mods', () => ({ available: listMods(), enabled: readConfig().mods_enabled }));
-  ipcMain.handle('panel:set-mods', (e, ids) => {
-    cfg = writeConfig({ ...readConfig(), mods_enabled: sanitizeModIds(ids) });
-    return cfg.mods_enabled;
+  ipcMain.handle('panel:list-plugins', () => ({ available: listplugins(), enabled: readConfig().plugins_enabled }));
+  ipcMain.handle('panel:set-plugins', (e, ids) => {
+    cfg = writeConfig({ ...readConfig(), plugins_enabled: sanitizeModIds(ids) });
+    return cfg.plugins_enabled;
   });
   ipcMain.handle('panel:get-autostart', () => fs.existsSync(autostartPath()));
   ipcMain.handle('panel:set-autostart', (e, on) => {
@@ -953,7 +953,7 @@ async function main() {
   cfg = readConfig();
   vlog(
     `config: close_to_tray=${cfg.close_to_tray} start_minimized=${cfg.start_minimized} ` +
-      `display=${cfg.display} mods=${JSON.stringify(cfg.mods_enabled)}`
+      `display=${cfg.display} plugins=${JSON.stringify(cfg.plugins_enabled)}`
   );
   applyDisplayBackend(cfg.display);
   const auto = autoEngine(cfg.engine);

@@ -19,14 +19,14 @@ is used when a GPU is present, software fallback otherwise — and if a
 run ever crashes with the GPU on, the next launch disables it
 automatically.
 
-Premade mods ship with Ruwa and run inside WhatsApp Web — toggle them
+Premade plugins ship with Ruwa and run inside WhatsApp Web — toggle them
 in Settings (applies immediately — the page reloads). Ships with **UAAA
 Decryptor**: messages containing `UAAA…` cipher blobs get inline
 Decrypt buttons, and an Encrypt button appears while you type in the
 chat box. Made for fun, not secure — see
-[`mods/uaaa-decryptor/`](mods/uaaa-decryptor/). To add a mod, drop a
-folder with a `mod.json` + JS files into `mods/` (see the UAAA mod for
-the format) and rebuild (mods are loaded from disk at startup, no
+[`plugins/uaaa-decryptor/`](plugins/uaaa-decryptor/). To add a mod, drop a
+folder with a `mod.json` + JS files into `plugins/` (see the UAAA mod for
+the format) and rebuild (plugins are loaded from disk at startup, no
 build step).
 
 ## Install (Nix)

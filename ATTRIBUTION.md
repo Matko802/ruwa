@@ -7,7 +7,7 @@ with no browser source compilation. The app code in this repo
 
 The bundled `uaaa-decryptor` mod is adapted from
 [UAAAEncryption](https://github.com/Matko802/UAAAEncryption) by Matko802
-(MIT, © 2026 Matko802): `mods/uaaa-decryptor/uaaa-core.js` and `LICENSE`
+(MIT, © 2026 Matko802): `plugins/uaaa-decryptor/uaaa-core.js` and `LICENSE`
 are vendored verbatim, `uaaa-decryptor.js` is the upstream userscript
 minus its metadata block, with `GM_*` shimmed onto `localStorage` and
 remote `@require`/font `@import` inlined or dropped for offline use.

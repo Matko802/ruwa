@@ -126,11 +126,11 @@ async function init() {
     }
   };
 
-  const { available, enabled } = await api.listMods();
-  const box = $('mods');
+  const { available, enabled } = await api.listplugins();
+  const box = $('plugins');
   box.innerHTML = '';
   if (!available.length) {
-    box.innerHTML = '<p class="hint">No premade mods found in this build.</p>';
+    box.innerHTML = '<p class="hint">No premade plugins found in this build.</p>';
   }
   const on = new Set(enabled);
   for (const m of available) {
@@ -146,7 +146,7 @@ async function init() {
       if (cb.checked) on.add(m.id);
       else on.delete(m.id);
       try {
-        await api.setMods([...on]);
+        await api.setplugins([...on]);
         await api.reloadMain();
       } catch (e) {
         status(`Mod toggle failed: ${e.message || e}`);
@@ -175,7 +175,7 @@ async function init() {
     }
   };
 
-  $('version').textContent = `Ruwa ${await api.getVersion()} — WhatsApp desktop client.`;
+  $('version').textContent = `Ruwa ${await api.getVersion()}`;
 
   const applyTheme = (t) =>
     document.documentElement.classList.toggle('dark', !!(t && t.dark));
