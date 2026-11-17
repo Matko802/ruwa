@@ -60,7 +60,7 @@ async function init() {
   $('closeToTray').onchange = (e) => save({ close_to_tray: e.target.checked });
   $('startMinimized').onchange = (e) => save({ start_minimized: e.target.checked });
 
-  const DISPLAY_LABELS = { auto: 'Automatic (prefer Wayland)', wayland: 'Wayland', x11: 'X11 / XWayland' };
+  const DISPLAY_LABELS = { auto: 'Auto', wayland: 'Wayland', x11: 'X11' };
   const field = $('displayField');
   const menu = $('displayMenu');
   const valueEl = $('displayValue');
