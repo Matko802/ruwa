@@ -338,7 +338,7 @@ function listplugins() {
   for (const e of entries) {
     if (!e.isDirectory() || !validModId(e.name)) continue;
     try {
-      const meta = JSON.parse(fs.readFileSync(path.join(dir, e.name, 'mod.json'), 'utf8'));
+      const meta = JSON.parse(fs.readFileSync(path.join(dir, e.name, 'plugin.json'), 'utf8'));
       if (meta.id !== e.name || typeof meta.name !== 'string') continue;
       const files = meta.files;
       if (!Array.isArray(files) || files.length === 0 || !files.every((f) => typeof f === 'string')) continue;
@@ -361,7 +361,7 @@ function buildpluginsRegistry(enabled) {
   for (const id of sanitizeModIds(enabled)) {
     let meta;
     try {
-      meta = JSON.parse(fs.readFileSync(path.join(dir, id, 'mod.json'), 'utf8'));
+      meta = JSON.parse(fs.readFileSync(path.join(dir, id, 'plugin.json'), 'utf8'));
     } catch (_) {
       continue;
     }

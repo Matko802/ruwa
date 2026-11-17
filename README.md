@@ -25,7 +25,7 @@ Decryptor**: messages containing `UAAA…` cipher blobs get inline
 Decrypt buttons, and an Encrypt button appears while you type in the
 chat box. Made for fun, not secure — see
 [`plugins/uaaa-decryptor/`](plugins/uaaa-decryptor/). To add a mod, drop a
-folder with a `mod.json` + JS files into `plugins/` (see the UAAA mod for
+folder with a `plugin.json` + JS files into `plugins/` (see the UAAA mod for
 the format) and rebuild (plugins are loaded from disk at startup, no
 build step).
 
