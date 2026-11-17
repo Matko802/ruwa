@@ -6,7 +6,7 @@ const status = (t) => { $('status').textContent = t; };
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    '&': '&', '<': '<', '>': '>', '"': '"', "'": '',
   }[c]));
 }
 
